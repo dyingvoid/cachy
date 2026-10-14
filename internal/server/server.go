@@ -9,6 +9,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dyingvoid/cachy/internal/domain"
 )
 
 type Server struct {
@@ -17,13 +19,31 @@ type Server struct {
 
 	ln net.Listener
 	wg sync.WaitGroup
+
+	parser   Parser
+	executor Executor
 }
 
-func NewServer(cfg Config, log *slog.Logger) (*Server, error) {
+type Parser interface {
+	Parse(in string) (domain.Command, error)
+}
+
+type Executor interface {
+	Execute(domain.Command) (domain.Result, error)
+}
+
+func NewServer(
+	cfg Config,
+	log *slog.Logger,
+	parser Parser,
+	executor Executor,
+) *Server {
 	return &Server{
-		cfg: cfg,
-		log: log,
-	}, nil
+		cfg:      cfg,
+		log:      log,
+		parser:   parser,
+		executor: executor,
+	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
@@ -31,7 +51,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.log.Warn("start TCP server", slog.String("addr", addr))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("listen on %s:")
+		return fmt.Errorf("listen on %s:", addr)
 	}
 	s.ln = ln
 
@@ -77,24 +97,69 @@ func (s *Server) loop(ctx context.Context) error {
 func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
+	log := slog.With(slog.String("addr", conn.RemoteAddr().String()))
+	log.Info("New connection")
+
 	scanner := bufio.NewScanner(conn)
 	for {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
-
 		if !scanner.Scan() {
+			log.Info("break", slog.String("addr", conn.RemoteAddr().String()))
 			break
 		}
 
-		_ = scanner.Text()
+		cmd, err := s.parser.Parse(scanner.Text())
+		if err != nil {
+			if err := s.writeError(log, conn, err); err != nil {
+				return
+			}
+			continue
+		}
+
+		res, err := s.executor.Execute(cmd)
+		if err != nil {
+			if err := s.writeError(log, conn, err); err != nil {
+				return
+			}
+			continue
+		}
+
+		if err := s.writeRes(log, conn, res); err != nil {
+			return
+		}
 
 		conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	}
 
 	if err := scanner.Err(); err != nil {
-		s.log.Error(
+		log.Error(
 			"read error",
 			slog.String("addr", conn.RemoteAddr().String()),
 			slog.Any("error", err),
 		)
 	}
+}
+
+// TODO: pass logger via context
+
+func (s *Server) writeError(log *slog.Logger, conn net.Conn, err error) error {
+	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
+	_, werr := fmt.Fprintf(conn, "ERR %s\n", err)
+	if werr != nil {
+		log.Error("write error", slog.Any("error", werr))
+		return werr
+	}
+
+	return nil
+}
+
+func (s *Server) writeRes(log *slog.Logger, conn net.Conn, res domain.Result) error {
+	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
+	_, werr := fmt.Fprintf(conn, "%s\n", res)
+	if werr != nil {
+		log.Error("write error", slog.Any("error", werr))
+		return werr
+	}
+
+	return nil
 }

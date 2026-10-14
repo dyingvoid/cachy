@@ -8,14 +8,14 @@ import (
 )
 
 type Config struct {
-	Port         int           `envconfig:"SERVER_PORT"`
-	ReadTimeout  time.Duration `envconfig:"SERVER_READ_TIMEOUT"`
-	WriteTimeout time.Duration `envconfig:"SERVER_WRITE_TIMEOUT"`
+	Port         int           `envconfig:"PORT"`
+	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT"`
+	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT"`
 }
 
 func NewConfig() (*Config, error) {
 	var cfg Config
-	if err := envconfig.Process("", &cfg); err != nil {
+	if err := envconfig.Process("SERVER", &cfg); err != nil {
 		return nil, fmt.Errorf("server: process config: %w", err)
 	}
 	if cfg.Port <= 0 || cfg.Port > 65535 {
