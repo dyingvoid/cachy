@@ -2,6 +2,7 @@ package core_executor
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
@@ -19,7 +20,7 @@ type StringStorage interface {
 }
 
 type ListStorage interface {
-	RPush(key string, value string) error
+	RPush(key string, value string) (int, error)
 }
 
 func NewExecutor(
@@ -45,6 +46,13 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		}
 
 		return domain.Result(record.Value), nil
+	case domain.RPushCmd:
+		n, err := e.listStorage.RPush(cmd.Key, cmd.Value)
+		if err != nil {
+			return "", err
+		}
+
+		return domain.Result(strconv.Itoa(n)), nil
 	default:
 		return "", fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}

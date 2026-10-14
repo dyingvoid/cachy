@@ -4,4 +4,4 @@ export
 export PROJECT_ROOT=$(shell pwd)
 
 run:
-	@go run ${PROJECT_ROOT}/cmd
+	@go fmt ${PROJECT_ROOT}/... && go run ${PROJECT_ROOT}/cmd

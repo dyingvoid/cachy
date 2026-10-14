@@ -32,10 +32,14 @@ type ListRecord struct {
 	List []string
 }
 
-func NewListRecord(value string, expiry *time.Duration) ListRecord {
+func NewListRecord(value string) ListRecord {
 	return ListRecord{List: []string{value}}
 }
 
 func (lr *ListRecord) PushBack(value string) {
 	lr.List = append(lr.List, value)
+}
+
+func (lr *ListRecord) Len() int {
+	return len(lr.List)
 }

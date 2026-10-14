@@ -31,6 +31,8 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 		return parseGetArgs(args)
 	case "SET":
 		return parseSetArgs(args)
+	case "RPUSH":
+		return parseRPushArgs(args)
 	default:
 		return nil, fmt.Errorf("can't parse %s: %w", name, domain_errors.ErrUnknownCommand)
 	}
@@ -72,4 +74,12 @@ func parseSetArgs(args []string) (domain.SetCmd, error) {
 	}
 
 	return cmd, nil
+}
+
+func parseRPushArgs(args []string) (domain.RPushCmd, error) {
+	if len(args) != 2 {
+		return domain.RPushCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	return domain.RPushCmd{Key: args[0], Value: args[1]}, nil
 }
