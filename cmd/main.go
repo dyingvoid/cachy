@@ -39,10 +39,11 @@ func main() {
 	listStorage := core_storage.NewListStorage(*storageCfg)
 	executor := core_executor.NewExecutor(memStorage, listStorage)
 	parser := core_parser.NewParser()
+	serializer := server.NewTextResultSerializer()
 
 	server := server.NewServer(
 		*serverCfg, log,
-		parser, executor,
+		parser, executor, serializer,
 	)
 
 	if err := server.Start(ctx); err != nil && err != context.Canceled {

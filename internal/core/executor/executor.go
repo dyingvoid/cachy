@@ -2,8 +2,6 @@ package core_executor
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
@@ -35,34 +33,34 @@ func NewExecutor(
 	}
 }
 
-func (e *Executor) Execute(cmd domain.Command) (domain.StringResult, error) {
+func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 	switch cmd := cmd.(type) {
 	case domain.SetCmd:
 		r := domain.NewStringRecord(cmd.Value, cmd.Expiry)
 		err := e.stringStorage.Set(cmd.Key, r)
-		return "OK", err
+		return domain.StringResult("OK"), err
 	case domain.GetCmd:
 		record, err := e.stringStorage.Get(cmd.Key)
 		if err != nil {
-			return domain.StringResult(record.Value), fmt.Errorf("failed to fetch: %w", err)
+			return nil, fmt.Errorf("failed to fetch: %w", err)
 		}
 
 		return domain.StringResult(record.Value), nil
 	case domain.RPushCmd:
 		n, err := e.listStorage.RPush(cmd.Key, cmd.Values...)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return domain.StringResult(strconv.Itoa(n)), nil
+		return domain.StringResult(fmt.Sprintf("(integer) %d", n)), nil
 	case domain.LRangeCmd:
 		values, err := e.listStorage.LRange(cmd.Key, cmd.Start, cmd.Stop)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return domain.StringResult(strings.Join(values, " ")), nil
+		return domain.ListResult(values), nil
 	default:
-		return "", fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
+		return nil, fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}
 }

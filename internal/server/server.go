@@ -23,6 +23,8 @@ type Server struct {
 
 	parser   Parser
 	executor Executor
+
+	serializer ResultSerializer
 }
 
 type Parser interface {
@@ -30,7 +32,11 @@ type Parser interface {
 }
 
 type Executor interface {
-	Execute(domain.Command) (domain.StringResult, error)
+	Execute(domain.Command) (domain.Result, error)
+}
+
+type ResultSerializer interface {
+	Serialize(domain.Result) string
 }
 
 func NewServer(
@@ -38,12 +44,14 @@ func NewServer(
 	log *slog.Logger,
 	parser Parser,
 	executor Executor,
+	serializer ResultSerializer,
 ) *Server {
 	return &Server{
-		cfg:      cfg,
-		log:      log,
-		parser:   parser,
-		executor: executor,
+		cfg:        cfg,
+		log:        log,
+		parser:     parser,
+		executor:   executor,
+		serializer: serializer,
 	}
 }
 
@@ -154,9 +162,9 @@ func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error
 	return nil
 }
 
-func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.StringResult) error {
+func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
-	_, werr := fmt.Fprintf(conn, "%s\n", res)
+	_, werr := fmt.Fprintf(conn, "%s\n", s.serializer.Serialize(res))
 	if werr != nil {
 		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr
