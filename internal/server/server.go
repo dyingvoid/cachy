@@ -98,7 +98,7 @@ func (s *Server) loop(ctx context.Context) error {
 func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	log := slog.With(slog.String("addr", conn.RemoteAddr().String()))
+	log := s.log.With(slog.String("addr", conn.RemoteAddr().String()))
 	log.Info("New connection")
 
 	ctx = logger.ToContext(ctx, log)

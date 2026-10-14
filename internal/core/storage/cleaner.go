@@ -1,8 +1,12 @@
 package core_storage
 
-import "time"
+import (
+	"log/slog"
+	"time"
+)
 
 func cleanup(
+	log *slog.Logger,
 	shard *shard,
 	interval time.Duration,
 	batchSize int,
@@ -11,6 +15,9 @@ func cleanup(
 	defer ticker.Stop()
 
 	for range ticker.C {
+		log.Debug("starting shard cleanup")
+
+		start := time.Now()
 		shard.mu.Lock()
 		count := 0
 
@@ -25,5 +32,10 @@ func cleanup(
 		}
 
 		shard.mu.Unlock()
+		log.Debug(
+			"shard cleaned up",
+			slog.Int("records", count),
+			slog.Duration("elapsed", time.Since(start)),
+		)
 	}
 }

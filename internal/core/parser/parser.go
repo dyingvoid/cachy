@@ -1,6 +1,7 @@
 package core_parser
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -31,22 +32,22 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 	case "SET":
 		return parseSetArgs(args)
 	default:
-		return nil, domain_errors.ErrUnknownCommand
+		return nil, fmt.Errorf("can't parse %s: %w", name, domain_errors.ErrUnknownCommand)
 	}
 }
 
-func parseGetArgs(args []string) (*domain.GetCmd, error) {
+func parseGetArgs(args []string) (domain.GetCmd, error) {
 	if len(args) != 1 {
-		return nil, domain_errors.ErrInvalidArguments
+		return domain.GetCmd{}, domain_errors.ErrInvalidArguments
 	}
 
-	return &domain.GetCmd{Key: args[0]}, nil
+	return domain.GetCmd{Key: args[0]}, nil
 }
 
-func parseSetArgs(args []string) (*domain.SetCmd, error) {
+func parseSetArgs(args []string) (domain.SetCmd, error) {
 	l := len(args)
 	if l < 2 || l > 4 || l%2 != 0 {
-		return nil, domain_errors.ErrInvalidArguments
+		return domain.SetCmd{}, domain_errors.ErrInvalidArguments
 	}
 
 	cmd := domain.SetCmd{
@@ -57,7 +58,7 @@ func parseSetArgs(args []string) (*domain.SetCmd, error) {
 	if l == 4 {
 		n, err := strconv.Atoi(args[3])
 		if err != nil || n <= 0 {
-			return nil, domain_errors.ErrInvalidArguments
+			return domain.SetCmd{}, domain_errors.ErrInvalidArguments
 		}
 		if strings.ToUpper(args[2]) == "EX" {
 			d := time.Duration(n) * time.Second
@@ -66,9 +67,9 @@ func parseSetArgs(args []string) (*domain.SetCmd, error) {
 			d := time.Duration(n) * time.Millisecond
 			cmd.Expiry = &d
 		} else {
-			return nil, domain_errors.ErrInvalidArguments
+			return domain.SetCmd{}, domain_errors.ErrInvalidArguments
 		}
 	}
 
-	return &cmd, nil
+	return cmd, nil
 }

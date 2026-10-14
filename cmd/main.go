@@ -35,7 +35,7 @@ func main() {
 		slog.Any("storage", *storageCfg),
 	)
 
-	memStorage := core_storage.NewMemoryStorage(*storageCfg)
+	memStorage := core_storage.NewMemoryStorage(log, *storageCfg)
 	executor := core_executor.NewExecutor(memStorage)
 	parser := core_parser.NewParser()
 

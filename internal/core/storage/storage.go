@@ -2,6 +2,7 @@ package core_storage
 
 import (
 	"hash/fnv"
+	"log/slog"
 	"sync"
 
 	"github.com/dyingvoid/cachy/internal/domain"
@@ -14,16 +15,18 @@ type shard struct {
 }
 
 type MemoryStorage struct {
+	log    *slog.Logger
 	shards []shard
 }
 
-func NewMemoryStorage(cfg Config) *MemoryStorage {
+func NewMemoryStorage(log *slog.Logger, cfg Config) *MemoryStorage {
 	s := &MemoryStorage{
+		log:    log,
 		shards: make([]shard, cfg.ShardCount),
 	}
 	for i := range s.shards {
 		s.shards[i].data = make(map[string]domain.Record)
-		go cleanup(&s.shards[i], cfg.CleanupInterval, cfg.CleanupBatchSize)
+		go cleanup(log, &s.shards[i], cfg.CleanupInterval, cfg.CleanupBatchSize)
 	}
 
 	return s

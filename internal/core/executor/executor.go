@@ -39,6 +39,6 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 
 		return domain.Result(record.Value), nil
 	default:
-		return "", fmt.Errorf("%w", domain_errors.ErrUnknownCommand)
+		return "", fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}
 }
