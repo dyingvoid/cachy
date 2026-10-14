@@ -21,8 +21,16 @@ type RPushCmd struct {
 	Values []string
 }
 
+type LRangeCmd struct {
+	Key   string
+	Start int
+	Stop  int
+}
+
 func (SetCmd) isCommand() {}
 
 func (GetCmd) isCommand() {}
 
 func (RPushCmd) isCommand() {}
+
+func (LRangeCmd) isCommand() {}

@@ -38,3 +38,17 @@ func (s *ListStorage) RPush(key string, values ...string) (int, error) {
 
 	return record.Len(), nil
 }
+
+func (s *ListStorage) LRange(key string, start, stop int) ([]string, error) {
+	sh := s.shards.getShard(key)
+
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
+
+	record, ok := sh.data[key]
+	if !ok {
+		return []string{}, nil
+	}
+
+	return record.Range(start, stop), nil
+}

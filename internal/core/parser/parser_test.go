@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
 
@@ -69,6 +70,43 @@ func TestParser_Parse_Set(t *testing.T) {
 	}
 }
 
+func TestParser_Parse_LRange(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want domain.LRangeCmd
+	}{
+		{
+			name: "range from zero",
+			in:   "LRANGE list_key 0 1",
+			want: domain.LRangeCmd{Key: "list_key", Start: 0, Stop: 1},
+		},
+		{
+			name: "range with equal indexes",
+			in:   "LRANGE list_key 2 2",
+			want: domain.LRangeCmd{Key: "list_key", Start: 2, Stop: 2},
+		},
+		{
+			name: "lowercase command",
+			in:   "lrange list_key 2 4",
+			want: domain.LRangeCmd{Key: "list_key", Start: 2, Stop: 4},
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, err := p.Parse(tt.in)
+			if err != nil {
+				t.Fatalf("Parse(%q) returned unexpected error: %v", tt.in, err)
+			}
+			if cmd != tt.want {
+				t.Fatalf("Parse(%q) = %+v, want %+v", tt.in, cmd, tt.want)
+			}
+		})
+	}
+}
+
 func TestParser_Parse_Errors(t *testing.T) {
 	tests := []struct {
 		name string
@@ -113,6 +151,41 @@ func TestParser_Parse_Errors(t *testing.T) {
 		{
 			name: "set with non positive expiry",
 			in:   "SET mykey value EX 0",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with no indexes",
+			in:   "LRANGE mykey",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with one index",
+			in:   "LRANGE mykey 0",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with too many args",
+			in:   "LRANGE mykey 0 1 extra",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with non numeric start",
+			in:   "LRANGE mykey a 1",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with non numeric stop",
+			in:   "LRANGE mykey 0 b",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with negative start",
+			in:   "LRANGE mykey -1 1",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lrange with negative stop",
+			in:   "LRANGE mykey 0 -1",
 			want: domain_errors.ErrInvalidArguments,
 		},
 	}

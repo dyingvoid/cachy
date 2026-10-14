@@ -30,7 +30,7 @@ type Parser interface {
 }
 
 type Executor interface {
-	Execute(domain.Command) (domain.Result, error)
+	Execute(domain.Command) (domain.StringResult, error)
 }
 
 func NewServer(
@@ -154,7 +154,7 @@ func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error
 	return nil
 }
 
-func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
+func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.StringResult) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	_, werr := fmt.Fprintf(conn, "%s\n", res)
 	if werr != nil {

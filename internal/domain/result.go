@@ -1,3 +1,5 @@
 package domain
 
-type Result string
+type StringResult string
+
+type ListResult []string

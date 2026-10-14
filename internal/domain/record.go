@@ -43,3 +43,15 @@ func (lr *ListRecord) PushBack(values ...string) {
 func (lr *ListRecord) Len() int {
 	return len(lr.List)
 }
+
+func (lr *ListRecord) Range(start, stop int) []string {
+	if start >= lr.Len() || start > stop {
+		return []string{}
+	}
+
+	if stop >= lr.Len() {
+		stop = lr.Len() - 1
+	}
+
+	return append([]string{}, lr.List[start:stop+1]...)
+}

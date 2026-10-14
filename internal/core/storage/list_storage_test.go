@@ -1,0 +1,94 @@
+package core_storage
+
+import (
+	"reflect"
+	"testing"
+)
+
+func newTestListStorage() *ListStorage {
+	return NewListStorage(Config{ShardCount: 4})
+}
+
+func TestListStorage_LRange(t *testing.T) {
+	s := newTestListStorage()
+	if _, err := s.RPush("list_key", "a", "b", "c", "d", "e"); err != nil {
+		t.Fatalf("RPush returned unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		key   string
+		start int
+		stop  int
+		want  []string
+	}{
+		{
+			name:  "first two",
+			key:   "list_key",
+			start: 0,
+			stop:  1,
+			want:  []string{"a", "b"},
+		},
+		{
+			name:  "middle",
+			key:   "list_key",
+			start: 2,
+			stop:  4,
+			want:  []string{"c", "d", "e"},
+		},
+		{
+			name:  "single element",
+			key:   "list_key",
+			start: 3,
+			stop:  3,
+			want:  []string{"d"},
+		},
+		{
+			name:  "stop past the end",
+			key:   "list_key",
+			start: 3,
+			stop:  100,
+			want:  []string{"d", "e"},
+		},
+		{
+			name:  "start at length",
+			key:   "list_key",
+			start: 5,
+			stop:  6,
+			want:  []string{},
+		},
+		{
+			name:  "start past the end",
+			key:   "list_key",
+			start: 100,
+			stop:  200,
+			want:  []string{},
+		},
+		{
+			name:  "start greater than stop",
+			key:   "list_key",
+			start: 3,
+			stop:  1,
+			want:  []string{},
+		},
+		{
+			name:  "missing key",
+			key:   "missing",
+			start: 0,
+			stop:  1,
+			want:  []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.LRange(tt.key, tt.start, tt.stop)
+			if err != nil {
+				t.Fatalf("LRange returned unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("LRange(%q, %d, %d) = %v, want %v", tt.key, tt.start, tt.stop, got, tt.want)
+			}
+		})
+	}
+}
