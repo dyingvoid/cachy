@@ -77,9 +77,9 @@ func parseSetArgs(args []string) (domain.SetCmd, error) {
 }
 
 func parseRPushArgs(args []string) (domain.RPushCmd, error) {
-	if len(args) != 2 {
+	if len(args) < 2 {
 		return domain.RPushCmd{}, domain_errors.ErrInvalidArguments
 	}
 
-	return domain.RPushCmd{Key: args[0], Value: args[1]}, nil
+	return domain.RPushCmd{Key: args[0], Values: args[1:]}, nil
 }

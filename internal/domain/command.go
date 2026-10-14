@@ -17,8 +17,8 @@ type SetCmd struct {
 }
 
 type RPushCmd struct {
-	Key   string
-	Value string
+	Key    string
+	Values []string
 }
 
 func (SetCmd) isCommand() {}

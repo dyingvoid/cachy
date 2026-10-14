@@ -19,7 +19,7 @@ func NewListStorage(cfg Config) *ListStorage {
 	return s
 }
 
-func (s *ListStorage) RPush(key string, value string) (int, error) {
+func (s *ListStorage) RPush(key string, values ...string) (int, error) {
 	sh := s.shards.getShard(key)
 
 	sh.mu.Lock()
@@ -27,13 +27,13 @@ func (s *ListStorage) RPush(key string, value string) (int, error) {
 
 	record, ok := sh.data[key]
 	if !ok {
-		rec := domain.NewListRecord(value)
+		rec := domain.NewListRecord(values...)
 		sh.data[key] = rec
 
 		return rec.Len(), nil
 	}
 
-	record.PushBack(value)
+	record.PushBack(values...)
 	sh.data[key] = record
 
 	return record.Len(), nil

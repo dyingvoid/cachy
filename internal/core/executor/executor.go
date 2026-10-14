@@ -20,7 +20,7 @@ type StringStorage interface {
 }
 
 type ListStorage interface {
-	RPush(key string, value string) (int, error)
+	RPush(key string, values ...string) (int, error)
 }
 
 func NewExecutor(
@@ -47,7 +47,7 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 
 		return domain.Result(record.Value), nil
 	case domain.RPushCmd:
-		n, err := e.listStorage.RPush(cmd.Key, cmd.Value)
+		n, err := e.listStorage.RPush(cmd.Key, cmd.Values...)
 		if err != nil {
 			return "", err
 		}

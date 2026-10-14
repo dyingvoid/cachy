@@ -32,12 +32,12 @@ type ListRecord struct {
 	List []string
 }
 
-func NewListRecord(value string) ListRecord {
-	return ListRecord{List: []string{value}}
+func NewListRecord(values ...string) ListRecord {
+	return ListRecord{List: append([]string{}, values...)}
 }
 
-func (lr *ListRecord) PushBack(value string) {
-	lr.List = append(lr.List, value)
+func (lr *ListRecord) PushBack(values ...string) {
+	lr.List = append(lr.List, values...)
 }
 
 func (lr *ListRecord) Len() int {
