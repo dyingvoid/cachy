@@ -1,17 +1,21 @@
 package domain
 
-type CommandName string
+import "time"
 
-const (
-	CommandGet CommandName = "GET"
-	CommandSet CommandName = "SET"
-)
-
-func (c CommandName) String() string {
-	return string(c)
+type Command interface {
+	isCommand()
 }
 
-type Command struct {
-	Name CommandName
-	Args []string
+type GetCmd struct {
+	Key string
 }
+
+func (GetCmd) isCommand() {}
+
+type SetCmd struct {
+	Key    string
+	Value  string
+	Expiry *time.Duration
+}
+
+func (SetCmd) isCommand() {}

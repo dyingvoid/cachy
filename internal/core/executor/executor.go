@@ -25,18 +25,18 @@ func NewExecutor(
 }
 
 func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
-	switch cmd.Name {
-	case domain.CommandSet:
-		err := e.storage.Set(cmd.Args[0], cmd.Args[1])
+	switch cmd := cmd.(type) {
+	case domain.SetCmd:
+		err := e.storage.Set(cmd.Key, cmd.Value)
 		return "OK", err
-	case domain.CommandGet:
-		value, err := e.storage.Get(cmd.Args[0])
+	case domain.GetCmd:
+		value, err := e.storage.Get(cmd.Key)
 		if err != nil {
 			return "", err
 		}
 
 		return domain.Result(value), nil
 	default:
-		return "", fmt.Errorf("%w: %s", domain_errors.ErrUnknownCommand, cmd.Name)
+		return "", fmt.Errorf("%w", domain_errors.ErrUnknownCommand)
 	}
 }

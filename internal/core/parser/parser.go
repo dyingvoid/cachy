@@ -1,47 +1,74 @@
 package core_parser
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
 
 type Parser struct {
-	commands map[domain.CommandName]int
 }
 
 func NewParser() *Parser {
-	m := map[domain.CommandName]int{
-		domain.CommandGet: 1,
-		domain.CommandSet: 2,
-	}
-
-	return &Parser{
-		commands: m,
-	}
+	return &Parser{}
 }
 
 func (p *Parser) Parse(in string) (domain.Command, error) {
 	fields := strings.Fields(in)
 	if len(fields) == 0 {
-		return domain.Command{}, domain_errors.ErrEmptyCommand
+		return nil, domain_errors.ErrEmptyCommand
 	}
 
-	name := domain.CommandName(strings.ToUpper(fields[0]))
-	expected, ok := p.commands[name]
-	if !ok {
-		return domain.Command{}, fmt.Errorf("%w: %s", domain_errors.ErrUnknownCommand, name)
-	}
-
+	name := fields[0]
 	args := fields[1:]
-	if len(args) != expected {
-		return domain.Command{}, fmt.Errorf(
-			"%w: %s expects %d arg(s), got %d",
-			domain_errors.ErrWrongArgCount, name, expected, len(args),
-		)
+
+	switch strings.ToUpper(name) {
+	case "GET":
+		return parseGetArgs(args)
+	case "SET":
+		return parseSetArgs(args)
+	default:
+		return nil, domain_errors.ErrUnknownCommand
+	}
+}
+
+func parseGetArgs(args []string) (*domain.GetCmd, error) {
+	if len(args) != 1 {
+		return nil, domain_errors.ErrInvalidArguments
 	}
 
-	return domain.Command{Name: name, Args: args}, nil
+	return &domain.GetCmd{Key: args[0]}, nil
+}
+
+func parseSetArgs(args []string) (*domain.SetCmd, error) {
+	l := len(args)
+	if l < 2 || l > 4 || l%2 != 0 {
+		return nil, domain_errors.ErrInvalidArguments
+	}
+
+	cmd := domain.SetCmd{
+		Key:   args[0],
+		Value: args[1],
+	}
+
+	if l == 4 {
+		n, err := strconv.Atoi(args[3])
+		if err != nil || n <= 0 {
+			return nil, domain_errors.ErrInvalidArguments
+		}
+		if strings.ToUpper(args[2]) == "EX" {
+			d := time.Duration(n) * time.Second
+			cmd.Expiry = &d
+		} else if strings.ToUpper(args[2]) == "PX" {
+			d := time.Duration(n) * time.Millisecond
+			cmd.Expiry = &d
+		} else {
+			return nil, domain_errors.ErrInvalidArguments
+		}
+	}
+
+	return &cmd, nil
 }
