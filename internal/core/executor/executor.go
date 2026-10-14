@@ -1,6 +1,11 @@
 package core_executor
 
-import "github.com/dyingvoid/cachy/internal/domain"
+import (
+	"fmt"
+
+	"github.com/dyingvoid/cachy/internal/domain"
+	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
+)
 
 type Executor struct {
 	storage Storage
@@ -20,12 +25,11 @@ func NewExecutor(
 }
 
 func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
-	// TODO: constants and enums for cmds
 	switch cmd.Name {
-	case "SET":
+	case domain.CommandSet:
 		err := e.storage.Set(cmd.Args[0], cmd.Args[1])
 		return "OK", err
-	case "GET":
+	case domain.CommandGet:
 		value, err := e.storage.Get(cmd.Args[0])
 		if err != nil {
 			return "", err
@@ -33,6 +37,6 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 
 		return domain.Result(value), nil
 	default:
-		panic("Unknown command: " + cmd.Name)
+		return "", fmt.Errorf("%w: %s", domain_errors.ErrUnknownCommand, cmd.Name)
 	}
 }

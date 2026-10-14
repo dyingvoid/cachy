@@ -5,18 +5,17 @@ import (
 	"strings"
 
 	"github.com/dyingvoid/cachy/internal/domain"
+	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
 
-// TODO: define errors separately
-
 type Parser struct {
-	commands map[string]int
+	commands map[domain.CommandName]int
 }
 
 func NewParser() *Parser {
-	m := map[string]int{
-		"GET": 1,
-		"SET": 2,
+	m := map[domain.CommandName]int{
+		domain.CommandGet: 1,
+		domain.CommandSet: 2,
 	}
 
 	return &Parser{
@@ -27,19 +26,21 @@ func NewParser() *Parser {
 func (p *Parser) Parse(in string) (domain.Command, error) {
 	fields := strings.Fields(in)
 	if len(fields) == 0 {
-		return domain.Command{}, fmt.Errorf("empty command")
+		return domain.Command{}, domain_errors.ErrEmptyCommand
 	}
 
-	name := strings.ToUpper(fields[0])
+	name := domain.CommandName(strings.ToUpper(fields[0]))
 	expected, ok := p.commands[name]
 	if !ok {
-		return domain.Command{}, fmt.Errorf("parser: unknown command")
+		return domain.Command{}, fmt.Errorf("%w: %s", domain_errors.ErrUnknownCommand, name)
 	}
 
 	args := fields[1:]
 	if len(args) != expected {
-		return domain.Command{},
-			fmt.Errorf("parser: %s expects %d arg(s), got %d", name, expected, len(args))
+		return domain.Command{}, fmt.Errorf(
+			"%w: %s expects %d arg(s), got %d",
+			domain_errors.ErrWrongArgCount, name, expected, len(args),
+		)
 	}
 
 	return domain.Command{Name: name, Args: args}, nil

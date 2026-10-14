@@ -20,15 +20,18 @@ func main() {
 	)
 	defer stop()
 
-	// TODO: log config
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	memStorage := core_storage.NewMemoryStorage()
+	serverCfg := server.NewConfigMust()
+	storageCfg := core_storage.NewConfigMust()
+	log.Info("config", slog.Any("server", *serverCfg), slog.Any("storage", *storageCfg))
+
+	memStorage := core_storage.NewMemoryStorage(*storageCfg)
 	executor := core_executor.NewExecutor(memStorage)
 	parser := core_parser.NewParser()
 
 	server := server.NewServer(
-		*server.NewConfigMust(), log,
+		*serverCfg, log,
 		parser, executor,
 	)
 

@@ -7,20 +7,19 @@ import (
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
 
-// TODO: to config
-const shardCount = 256
-
 type shard struct {
 	mu   sync.RWMutex
 	data map[string]string
 }
 
 type MemoryStorage struct {
-	shards [shardCount]shard
+	shards []shard
 }
 
-func NewMemoryStorage() *MemoryStorage {
-	s := &MemoryStorage{}
+func NewMemoryStorage(cfg Config) *MemoryStorage {
+	s := &MemoryStorage{
+		shards: make([]shard, cfg.ShardCount),
+	}
 	for i := range s.shards {
 		s.shards[i].data = make(map[string]string)
 	}
@@ -56,5 +55,5 @@ func (s *MemoryStorage) getShard(key string) *shard {
 	h := fnv.New32a()
 	// no actual error returned
 	_, _ = h.Write([]byte(key))
-	return &s.shards[h.Sum32()%shardCount]
+	return &s.shards[h.Sum32()%uint32(len(s.shards))]
 }
