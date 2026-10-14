@@ -2,7 +2,6 @@ package core_executor
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
@@ -36,13 +35,6 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		record, err := e.storage.Get(cmd.Key)
 		if err != nil {
 			return domain.Result(record.Value), fmt.Errorf("failed to fetch: %w", err)
-		}
-
-		if record.ExpireAt != nil && record.ExpireAt.Before(time.Now()) {
-			if err := e.storage.Delete(cmd.Key); err != nil {
-				return "", fmt.Errorf("failed to delete expired record: %w", err)
-			}
-			return "", domain_errors.ErrNotFound
 		}
 
 		return domain.Result(record.Value), nil

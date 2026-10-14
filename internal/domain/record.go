@@ -19,3 +19,11 @@ func NewRecord(value string, expiry *time.Duration) Record {
 
 	return r
 }
+
+func (r Record) Expired() bool {
+	if r.ExpireAt == nil {
+		return false
+	}
+
+	return r.ExpireAt.Before(time.Now())
+}

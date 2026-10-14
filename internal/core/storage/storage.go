@@ -41,12 +41,26 @@ func (s *MemoryStorage) Set(key string, value domain.Record) error {
 func (s *MemoryStorage) Get(key string) (domain.Record, error) {
 	sh := s.getShard(key)
 
-	sh.mu.Lock()
+	sh.mu.RLock()
 	value, ok := sh.data[key]
-	sh.mu.Unlock()
+	sh.mu.RUnlock()
 
 	if !ok {
 		return domain.Record{}, domain_errors.ErrNotFound
+	}
+
+	if value.Expired() {
+		sh.mu.Lock()
+		defer sh.mu.Unlock()
+
+		value, ok = sh.data[key]
+		if !ok {
+			return domain.Record{}, domain_errors.ErrNotFound
+		}
+		if value.Expired() {
+			delete(sh.data, key)
+			return domain.Record{}, domain_errors.ErrNotFound
+		}
 	}
 
 	return value, nil
