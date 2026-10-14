@@ -2,13 +2,15 @@ package core_storage
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
-
 type Config struct {
-	ShardCount int `envconfig:"SHARD_COUNT" default:"256"`
+	ShardCount       int           `envconfig:"SHARD_COUNT" default:"256"`
+	CleanupInterval  time.Duration `envconfig:"CLEANUP_INTERVAL" default:"1s"`
+	CleanupBatchSize int           `envconfig:"CLEANUP_BATCH_SIZE" default:"1000"`
 }
 
 func NewConfig() (*Config, error) {
@@ -18,6 +20,12 @@ func NewConfig() (*Config, error) {
 	}
 	if cfg.ShardCount <= 0 {
 		return nil, fmt.Errorf("storage: invalid shard count: %d", cfg.ShardCount)
+	}
+	if cfg.CleanupInterval <= 0 {
+		return nil, fmt.Errorf("storage: invalid cleanup interval: %s", cfg.CleanupInterval)
+	}
+	if cfg.CleanupBatchSize <= 0 {
+		return nil, fmt.Errorf("storage: invalid cleanup batch size: %d", cfg.CleanupBatchSize)
 	}
 	return &cfg, nil
 }

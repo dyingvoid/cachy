@@ -23,6 +23,7 @@ func NewMemoryStorage(cfg Config) *MemoryStorage {
 	}
 	for i := range s.shards {
 		s.shards[i].data = make(map[string]domain.Record)
+		go cleanup(&s.shards[i], cfg.CleanupInterval, cfg.CleanupBatchSize)
 	}
 
 	return s

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dyingvoid/cachy/internal/domain"
+	"github.com/dyingvoid/cachy/internal/logger"
 )
 
 type Server struct {
@@ -100,6 +101,8 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	log := slog.With(slog.String("addr", conn.RemoteAddr().String()))
 	log.Info("New connection")
 
+	ctx = logger.ToContext(ctx, log)
+
 	scanner := bufio.NewScanner(conn)
 	for {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
@@ -110,7 +113,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		cmd, err := s.parser.Parse(scanner.Text())
 		if err != nil {
-			if err := s.writeError(log, conn, err); err != nil {
+			if err := s.writeError(ctx, conn, err); err != nil {
 				return
 			}
 			continue
@@ -118,13 +121,13 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		res, err := s.executor.Execute(cmd)
 		if err != nil {
-			if err := s.writeError(log, conn, err); err != nil {
+			if err := s.writeError(ctx, conn, err); err != nil {
 				return
 			}
 			continue
 		}
 
-		if err := s.writeRes(log, conn, res); err != nil {
+		if err := s.writeRes(ctx, conn, res); err != nil {
 			return
 		}
 
@@ -132,7 +135,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Error(
+		logger.FromContext(ctx).Error(
 			"read error",
 			slog.String("addr", conn.RemoteAddr().String()),
 			slog.Any("error", err),
@@ -140,24 +143,22 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-// TODO: pass logger via context
-
-func (s *Server) writeError(log *slog.Logger, conn net.Conn, err error) error {
+func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	_, werr := fmt.Fprintf(conn, "ERR %s\n", err)
 	if werr != nil {
-		log.Error("write error", slog.Any("error", werr))
+		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr
 	}
 
 	return nil
 }
 
-func (s *Server) writeRes(log *slog.Logger, conn net.Conn, res domain.Result) error {
+func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	_, werr := fmt.Fprintf(conn, "%s\n", res)
 	if werr != nil {
-		log.Error("write error", slog.Any("error", werr))
+		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr
 	}
 
