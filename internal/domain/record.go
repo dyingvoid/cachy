@@ -2,13 +2,13 @@ package domain
 
 import "time"
 
-type Record struct {
+type StringRecord struct {
 	Value    string
 	ExpireAt *time.Time
 }
 
-func NewRecord(value string, expiry *time.Duration) Record {
-	r := Record{
+func NewStringRecord(value string, expiry *time.Duration) StringRecord {
+	r := StringRecord{
 		Value: value,
 	}
 
@@ -20,10 +20,22 @@ func NewRecord(value string, expiry *time.Duration) Record {
 	return r
 }
 
-func (r Record) Expired() bool {
+func (r StringRecord) Expired() bool {
 	if r.ExpireAt == nil {
 		return false
 	}
 
 	return r.ExpireAt.Before(time.Now())
+}
+
+type ListRecord struct {
+	List []string
+}
+
+func NewListRecord(value string, expiry *time.Duration) ListRecord {
+	return ListRecord{List: []string{value}}
+}
+
+func (lr *ListRecord) PushBack(value string) {
+	lr.List = append(lr.List, value)
 }

@@ -8,31 +8,38 @@ import (
 )
 
 type Executor struct {
-	storage Storage
+	stringStorage StringStorage
+	listStorage   ListStorage
 }
 
-type Storage interface {
-	Set(key string, value domain.Record) error
-	Get(key string) (domain.Record, error)
+type StringStorage interface {
+	Set(key string, value domain.StringRecord) error
+	Get(key string) (domain.StringRecord, error)
 	Delete(key string) error
 }
 
+type ListStorage interface {
+	RPush(key string, value string) error
+}
+
 func NewExecutor(
-	storage Storage,
+	stringStorage StringStorage,
+	listStorage ListStorage,
 ) *Executor {
 	return &Executor{
-		storage: storage,
+		stringStorage: stringStorage,
+		listStorage:   listStorage,
 	}
 }
 
 func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 	switch cmd := cmd.(type) {
 	case domain.SetCmd:
-		r := domain.NewRecord(cmd.Value, cmd.Expiry)
-		err := e.storage.Set(cmd.Key, r)
+		r := domain.NewStringRecord(cmd.Value, cmd.Expiry)
+		err := e.stringStorage.Set(cmd.Key, r)
 		return "OK", err
 	case domain.GetCmd:
-		record, err := e.storage.Get(cmd.Key)
+		record, err := e.stringStorage.Get(cmd.Key)
 		if err != nil {
 			return domain.Result(record.Value), fmt.Errorf("failed to fetch: %w", err)
 		}

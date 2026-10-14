@@ -36,7 +36,8 @@ func main() {
 	)
 
 	memStorage := core_storage.NewMemoryStorage(log, *storageCfg)
-	executor := core_executor.NewExecutor(memStorage)
+	listStorage := core_storage.NewListStorage(*storageCfg)
+	executor := core_executor.NewExecutor(memStorage, listStorage)
 	parser := core_parser.NewParser()
 
 	server := server.NewServer(

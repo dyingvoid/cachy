@@ -1,13 +1,32 @@
 package core_storage
 
 import (
+	"hash/fnv"
 	"log/slog"
+	"sync"
 	"time"
+
+	"github.com/dyingvoid/cachy/internal/domain"
 )
+
+type shard[T domain.StringRecord | domain.ListRecord] struct {
+	mu   sync.RWMutex
+	data map[string]T
+}
+
+type shardCollection[T domain.StringRecord | domain.ListRecord] []shard[T]
+
+func (s shardCollection[T]) getShard(key string) *shard[T] {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(key))
+
+	idx := h.Sum32() % uint32(len(s))
+	return &s[idx]
+}
 
 func cleanup(
 	log *slog.Logger,
-	shard *shard,
+	shard *shard[domain.StringRecord],
 	interval time.Duration,
 	batchSize int,
 ) {
