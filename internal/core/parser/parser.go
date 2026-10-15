@@ -92,12 +92,12 @@ func parseLRangeArgs(args []string) (domain.LRangeCmd, error) {
 	}
 
 	start, err := strconv.Atoi(args[1])
-	if err != nil || start < 0 {
+	if err != nil {
 		return domain.LRangeCmd{}, domain_errors.ErrInvalidArguments
 	}
 
 	stop, err := strconv.Atoi(args[2])
-	if err != nil || stop < 0 {
+	if err != nil {
 		return domain.LRangeCmd{}, domain_errors.ErrInvalidArguments
 	}
 

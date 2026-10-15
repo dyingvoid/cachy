@@ -91,6 +91,21 @@ func TestParser_Parse_LRange(t *testing.T) {
 			in:   "lrange list_key 2 4",
 			want: domain.LRangeCmd{Key: "list_key", Start: 2, Stop: 4},
 		},
+		{
+			name: "negative start and stop",
+			in:   "LRANGE list_key -2 -1",
+			want: domain.LRangeCmd{Key: "list_key", Start: -2, Stop: -1},
+		},
+		{
+			name: "negative stop",
+			in:   "LRANGE list_key 0 -3",
+			want: domain.LRangeCmd{Key: "list_key", Start: 0, Stop: -3},
+		},
+		{
+			name: "negative start",
+			in:   "LRANGE list_key -1 4",
+			want: domain.LRangeCmd{Key: "list_key", Start: -1, Stop: 4},
+		},
 	}
 
 	p := NewParser()
@@ -176,16 +191,6 @@ func TestParser_Parse_Errors(t *testing.T) {
 		{
 			name: "lrange with non numeric stop",
 			in:   "LRANGE mykey 0 b",
-			want: domain_errors.ErrInvalidArguments,
-		},
-		{
-			name: "lrange with negative start",
-			in:   "LRANGE mykey -1 1",
-			want: domain_errors.ErrInvalidArguments,
-		},
-		{
-			name: "lrange with negative stop",
-			in:   "LRANGE mykey 0 -1",
 			want: domain_errors.ErrInvalidArguments,
 		},
 	}

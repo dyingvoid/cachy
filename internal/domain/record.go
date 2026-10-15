@@ -45,6 +45,9 @@ func (lr *ListRecord) Len() int {
 }
 
 func (lr *ListRecord) Range(start, stop int) []string {
+	start = lr.normalizeIndex(start)
+	stop = lr.normalizeIndex(stop)
+
 	if start >= lr.Len() || start > stop {
 		return []string{}
 	}
@@ -54,4 +57,16 @@ func (lr *ListRecord) Range(start, stop int) []string {
 	}
 
 	return append([]string{}, lr.List[start:stop+1]...)
+}
+
+func (lr *ListRecord) normalizeIndex(index int) int {
+	if index < 0 {
+		index += lr.Len()
+	}
+
+	if index < 0 {
+		return 0
+	}
+
+	return index
 }
