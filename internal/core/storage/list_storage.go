@@ -69,3 +69,17 @@ func (s *ListStorage) LRange(key string, start, stop int) ([]string, error) {
 
 	return record.Range(start, stop), nil
 }
+
+func (s *ListStorage) LLen(key string) (int, error) {
+	sh := s.shards.getShard(key)
+
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
+
+	record, ok := sh.data[key]
+	if !ok {
+		return 0, nil
+	}
+
+	return record.Len(), nil
+}

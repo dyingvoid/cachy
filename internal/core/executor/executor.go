@@ -22,6 +22,7 @@ type ListStorage interface {
 	RPush(key string, values ...string) (int, error)
 	LPush(key string, values ...string) (int, error)
 	LRange(key string, start, stop int) ([]string, error)
+	LLen(key string) (int, error)
 }
 
 func NewExecutor(
@@ -68,6 +69,13 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		}
 
 		return domain.ListResult(values), nil
+	case domain.LLenCmd:
+		n, err := e.listStorage.LLen(cmd.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		return domain.StringResult(fmt.Sprintf("(integer) %d", n)), nil
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}

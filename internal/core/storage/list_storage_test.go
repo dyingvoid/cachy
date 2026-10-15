@@ -45,6 +45,42 @@ func TestListStorage_LPush(t *testing.T) {
 	}
 }
 
+func TestListStorage_LLen(t *testing.T) {
+	s := newTestListStorage()
+
+	n, err := s.LLen("missing")
+	if err != nil {
+		t.Fatalf("LLen returned unexpected error: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("LLen on missing key = %d, want 0", n)
+	}
+
+	if _, err := s.RPush("list_key", "a", "b", "c", "d"); err != nil {
+		t.Fatalf("RPush returned unexpected error: %v", err)
+	}
+
+	n, err = s.LLen("list_key")
+	if err != nil {
+		t.Fatalf("LLen returned unexpected error: %v", err)
+	}
+	if n != 4 {
+		t.Fatalf("LLen = %d, want 4", n)
+	}
+
+	if _, err := s.LPush("list_key", "e"); err != nil {
+		t.Fatalf("LPush returned unexpected error: %v", err)
+	}
+
+	n, err = s.LLen("list_key")
+	if err != nil {
+		t.Fatalf("LLen returned unexpected error: %v", err)
+	}
+	if n != 5 {
+		t.Fatalf("LLen after LPush = %d, want 5", n)
+	}
+}
+
 func TestListStorage_LRange(t *testing.T) {
 	s := newTestListStorage()
 	if _, err := s.RPush("list_key", "a", "b", "c", "d", "e"); err != nil {

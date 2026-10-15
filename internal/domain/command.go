@@ -32,6 +32,10 @@ type LRangeCmd struct {
 	Stop  int
 }
 
+type LLenCmd struct {
+	Key string
+}
+
 func (SetCmd) isCommand() {}
 
 func (GetCmd) isCommand() {}
@@ -41,3 +45,5 @@ func (RPushCmd) isCommand() {}
 func (LPushCmd) isCommand() {}
 
 func (LRangeCmd) isCommand() {}
+
+func (LLenCmd) isCommand() {}

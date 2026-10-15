@@ -160,6 +160,38 @@ func TestParser_Parse_LPush(t *testing.T) {
 	}
 }
 
+func TestParser_Parse_LLen(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want domain.LLenCmd
+	}{
+		{
+			name: "list key",
+			in:   "LLEN list_key",
+			want: domain.LLenCmd{Key: "list_key"},
+		},
+		{
+			name: "lowercase command",
+			in:   "llen list_key",
+			want: domain.LLenCmd{Key: "list_key"},
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, err := p.Parse(tt.in)
+			if err != nil {
+				t.Fatalf("Parse(%q) returned unexpected error: %v", tt.in, err)
+			}
+			if cmd != tt.want {
+				t.Fatalf("Parse(%q) = %+v, want %+v", tt.in, cmd, tt.want)
+			}
+		})
+	}
+}
+
 func TestParser_Parse_Errors(t *testing.T) {
 	tests := []struct {
 		name string
@@ -234,6 +266,16 @@ func TestParser_Parse_Errors(t *testing.T) {
 		{
 			name: "lrange with non numeric stop",
 			in:   "LRANGE mykey 0 b",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "llen with no key",
+			in:   "LLEN",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "llen with too many args",
+			in:   "LLEN mykey extra",
 			want: domain_errors.ErrInvalidArguments,
 		},
 	}
