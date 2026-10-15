@@ -58,6 +58,7 @@ func TestExecutor_ListCommandOnStringKey(t *testing.T) {
 		domain.LPushCmd{Key: "key", Values: []string{"a"}},
 		domain.LRangeCmd{Key: "key", Start: 0, Stop: -1},
 		domain.LLenCmd{Key: "key"},
+		domain.LPopCmd{Key: "key", Count: 1},
 	}
 
 	for _, cmd := range cmds {
@@ -113,6 +114,46 @@ func TestExecutor_KeyKeepsSingleType(t *testing.T) {
 	}
 }
 
+func TestExecutor_LPop(t *testing.T) {
+	e := newTestExecutor()
+
+	if _, err := e.Execute(domain.RPushCmd{Key: "key", Values: []string{"a", "b", "c"}}); err != nil {
+		t.Fatalf("RPush returned unexpected error: %v", err)
+	}
+
+	res, err := e.Execute(domain.LPopCmd{Key: "key", Count: 2})
+	if err != nil {
+		t.Fatalf("LPop returned unexpected error: %v", err)
+	}
+	if want := (domain.ListResult{"a", "b"}); !reflect.DeepEqual(res, want) {
+		t.Fatalf("LPop = %v, want %v", res, want)
+	}
+
+	res, err = e.Execute(domain.LRangeCmd{Key: "key", Start: 0, Stop: -1})
+	if err != nil {
+		t.Fatalf("LRange returned unexpected error: %v", err)
+	}
+	if want := (domain.ListResult{"c"}); !reflect.DeepEqual(res, want) {
+		t.Fatalf("LRange after LPop = %v, want %v", res, want)
+	}
+
+	if _, err := e.Execute(domain.LPopCmd{Key: "key", Count: 1}); err != nil {
+		t.Fatalf("LPop returned unexpected error: %v", err)
+	}
+
+	if _, err := e.Execute(domain.SetCmd{Key: "key", Value: "value"}); err != nil {
+		t.Fatalf("Set on emptied list key returned unexpected error: %v", err)
+	}
+
+	res, err = e.Execute(domain.LPopCmd{Key: "missing", Count: 2})
+	if err != nil {
+		t.Fatalf("LPop on missing key returned unexpected error: %v", err)
+	}
+	if want := (domain.ListResult{}); !reflect.DeepEqual(res, want) {
+		t.Fatalf("LPop on missing key = %v, want %v", res, want)
+	}
+}
+
 func commandName(cmd domain.Command) string {
 	switch cmd.(type) {
 	case domain.SetCmd:
@@ -127,6 +168,8 @@ func commandName(cmd domain.Command) string {
 		return "LRANGE"
 	case domain.LLenCmd:
 		return "LLEN"
+	case domain.LPopCmd:
+		return "LPOP"
 	default:
 		return "UNKNOWN"
 	}

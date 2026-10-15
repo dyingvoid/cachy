@@ -84,6 +84,27 @@ func (s *ListStorage) LLen(key string) (int, error) {
 	return record.Len(), nil
 }
 
+func (s *ListStorage) LPop(key string, count int) ([]string, error) {
+	sh := s.shards.getShard(key)
+
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
+
+	record, ok := sh.data[key]
+	if !ok {
+		return []string{}, nil
+	}
+
+	values := record.PopFront(count)
+	if record.Len() == 0 {
+		delete(sh.data, key)
+	} else {
+		sh.data[key] = record
+	}
+
+	return values, nil
+}
+
 func (s *ListStorage) Exists(key string) bool {
 	sh := s.shards.getShard(key)
 

@@ -81,6 +81,49 @@ func TestListStorage_LLen(t *testing.T) {
 	}
 }
 
+func TestListStorage_LPop(t *testing.T) {
+	s := newTestListStorage()
+	if _, err := s.RPush("list_key", "a", "b", "c", "d"); err != nil {
+		t.Fatalf("RPush returned unexpected error: %v", err)
+	}
+
+	got, err := s.LPop("list_key", 2)
+	if err != nil {
+		t.Fatalf("LPop returned unexpected error: %v", err)
+	}
+	if want := []string{"a", "b"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LPop = %v, want %v", got, want)
+	}
+
+	got, err = s.LRange("list_key", 0, -1)
+	if err != nil {
+		t.Fatalf("LRange returned unexpected error: %v", err)
+	}
+	if want := []string{"c", "d"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LRange after LPop = %v, want %v", got, want)
+	}
+
+	got, err = s.LPop("list_key", 100)
+	if err != nil {
+		t.Fatalf("LPop returned unexpected error: %v", err)
+	}
+	if want := []string{"c", "d"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LPop past the end = %v, want %v", got, want)
+	}
+
+	if s.Exists("list_key") {
+		t.Fatalf("Exists after popping the whole list = true, want false")
+	}
+
+	got, err = s.LPop("missing", 2)
+	if err != nil {
+		t.Fatalf("LPop returned unexpected error: %v", err)
+	}
+	if want := []string{}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LPop on missing key = %v, want %v", got, want)
+	}
+}
+
 func TestListStorage_LRange(t *testing.T) {
 	s := newTestListStorage()
 	if _, err := s.RPush("list_key", "a", "b", "c", "d", "e"); err != nil {

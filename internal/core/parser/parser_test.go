@@ -192,6 +192,43 @@ func TestParser_Parse_LLen(t *testing.T) {
 	}
 }
 
+func TestParser_Parse_LPop(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want domain.LPopCmd
+	}{
+		{
+			name: "single count",
+			in:   "LPOP list_key 2",
+			want: domain.LPopCmd{Key: "list_key", Count: 2},
+		},
+		{
+			name: "zero count",
+			in:   "LPOP list_key 0",
+			want: domain.LPopCmd{Key: "list_key", Count: 0},
+		},
+		{
+			name: "lowercase command",
+			in:   "lpop list_key 1",
+			want: domain.LPopCmd{Key: "list_key", Count: 1},
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, err := p.Parse(tt.in)
+			if err != nil {
+				t.Fatalf("Parse(%q) returned unexpected error: %v", tt.in, err)
+			}
+			if cmd != tt.want {
+				t.Fatalf("Parse(%q) = %+v, want %+v", tt.in, cmd, tt.want)
+			}
+		})
+	}
+}
+
 func TestParser_Parse_Errors(t *testing.T) {
 	tests := []struct {
 		name string
@@ -276,6 +313,26 @@ func TestParser_Parse_Errors(t *testing.T) {
 		{
 			name: "llen with too many args",
 			in:   "LLEN mykey extra",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lpop with no count",
+			in:   "LPOP mykey",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lpop with too many args",
+			in:   "LPOP mykey 1 extra",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lpop with non numeric count",
+			in:   "LPOP mykey a",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lpop with negative count",
+			in:   "LPOP mykey -1",
 			want: domain_errors.ErrInvalidArguments,
 		},
 	}

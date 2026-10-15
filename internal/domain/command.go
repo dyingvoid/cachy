@@ -36,6 +36,11 @@ type LLenCmd struct {
 	Key string
 }
 
+type LPopCmd struct {
+	Key   string
+	Count int
+}
+
 func (SetCmd) isCommand() {}
 
 func (GetCmd) isCommand() {}
@@ -47,3 +52,5 @@ func (LPushCmd) isCommand() {}
 func (LRangeCmd) isCommand() {}
 
 func (LLenCmd) isCommand() {}
+
+func (LPopCmd) isCommand() {}

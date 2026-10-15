@@ -24,6 +24,7 @@ type ListStorage interface {
 	LPush(key string, values ...string) (int, error)
 	LRange(key string, start, stop int) ([]string, error)
 	LLen(key string) (int, error)
+	LPop(key string, count int) ([]string, error)
 	Exists(key string) bool
 }
 
@@ -51,6 +52,8 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		return e.executeLRange(cmd)
 	case domain.LLenCmd:
 		return e.executeLLen(cmd)
+	case domain.LPopCmd:
+		return e.executeLPop(cmd)
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}
@@ -67,6 +70,19 @@ func (e *Executor) executeLLen(cmd domain.LLenCmd) (domain.Result, error) {
 	}
 
 	return domain.StringResult(fmt.Sprintf("(integer) %d", n)), nil
+}
+
+func (e *Executor) executeLPop(cmd domain.LPopCmd) (domain.Result, error) {
+	if err := e.ensureListKey(cmd.Key); err != nil {
+		return nil, err
+	}
+
+	values, err := e.listStorage.LPop(cmd.Key, cmd.Count)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.ListResult(values), nil
 }
 
 func (e *Executor) executeLRange(cmd domain.LRangeCmd) (domain.Result, error) {

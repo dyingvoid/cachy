@@ -53,6 +53,21 @@ func (lr *ListRecord) Len() int {
 	return len(lr.List)
 }
 
+func (lr *ListRecord) PopFront(count int) []string {
+	if count <= 0 {
+		return []string{}
+	}
+
+	if count > lr.Len() {
+		count = lr.Len()
+	}
+
+	popped := append([]string{}, lr.List[:count]...)
+	lr.List = lr.List[count:]
+
+	return popped
+}
+
 func (lr *ListRecord) Range(start, stop int) []string {
 	start = lr.normalizeIndex(start)
 	stop = lr.normalizeIndex(stop)

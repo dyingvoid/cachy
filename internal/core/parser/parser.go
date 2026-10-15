@@ -39,6 +39,8 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 		return parseLRangeArgs(args)
 	case "LLEN":
 		return parseLLenArgs(args)
+	case "LPOP":
+		return parseLPopArgs(args)
 	default:
 		return nil, fmt.Errorf("can't parse %s: %w", name, domain_errors.ErrUnknownCommand)
 	}
@@ -122,4 +124,17 @@ func parseLLenArgs(args []string) (domain.LLenCmd, error) {
 	}
 
 	return domain.LLenCmd{Key: args[0]}, nil
+}
+
+func parseLPopArgs(args []string) (domain.LPopCmd, error) {
+	if len(args) != 2 {
+		return domain.LPopCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	count, err := strconv.Atoi(args[1])
+	if err != nil || count < 0 {
+		return domain.LPopCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	return domain.LPopCmd{Key: args[0], Count: count}, nil
 }
