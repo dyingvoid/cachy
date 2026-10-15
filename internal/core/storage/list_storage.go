@@ -83,3 +83,14 @@ func (s *ListStorage) LLen(key string) (int, error) {
 
 	return record.Len(), nil
 }
+
+func (s *ListStorage) Exists(key string) bool {
+	sh := s.shards.getShard(key)
+
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
+
+	_, ok := sh.data[key]
+
+	return ok
+}

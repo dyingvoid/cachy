@@ -77,3 +77,13 @@ func (s *StringStorage) Delete(key string) error {
 
 	return nil
 }
+
+func (s *StringStorage) Exists(key string) bool {
+	sh := s.shards.getShard(key)
+
+	sh.mu.RLock()
+	value, ok := sh.data[key]
+	sh.mu.RUnlock()
+
+	return ok && !value.Expired()
+}

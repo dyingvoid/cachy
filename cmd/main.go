@@ -39,7 +39,7 @@ func main() {
 	listStorage := core_storage.NewListStorage(*storageCfg)
 	executor := core_executor.NewExecutor(memStorage, listStorage)
 	parser := core_parser.NewParser()
-	serializer := server.NewTextResultSerializer()
+	serializer := server.NewTextSerializer()
 
 	server := server.NewServer(
 		*serverCfg, log,

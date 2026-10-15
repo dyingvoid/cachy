@@ -1,18 +1,19 @@
 package server
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dyingvoid/cachy/internal/domain"
 )
 
-type TextResultSerializer struct{}
+type TextSerializer struct{}
 
-func NewTextResultSerializer() *TextResultSerializer {
-	return &TextResultSerializer{}
+func NewTextSerializer() *TextSerializer {
+	return &TextSerializer{}
 }
 
-func (s *TextResultSerializer) Serialize(res domain.Result) string {
+func (s *TextSerializer) Serialize(res domain.Result) string {
 	switch res := res.(type) {
 	case domain.StringResult:
 		return string(res)
@@ -21,4 +22,8 @@ func (s *TextResultSerializer) Serialize(res domain.Result) string {
 	default:
 		return ""
 	}
+}
+
+func (s *TextSerializer) SerializeError(err error) string {
+	return fmt.Sprintf("(error) %s", err)
 }

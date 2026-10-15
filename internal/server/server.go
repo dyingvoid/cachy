@@ -24,7 +24,7 @@ type Server struct {
 	parser   Parser
 	executor Executor
 
-	serializer ResultSerializer
+	serializer Serializer
 }
 
 type Parser interface {
@@ -35,8 +35,9 @@ type Executor interface {
 	Execute(domain.Command) (domain.Result, error)
 }
 
-type ResultSerializer interface {
+type Serializer interface {
 	Serialize(domain.Result) string
+	SerializeError(error) string
 }
 
 func NewServer(
@@ -44,7 +45,7 @@ func NewServer(
 	log *slog.Logger,
 	parser Parser,
 	executor Executor,
-	serializer ResultSerializer,
+	serializer Serializer,
 ) *Server {
 	return &Server{
 		cfg:        cfg,
@@ -121,7 +122,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		cmd, err := s.parser.Parse(scanner.Text())
 		if err != nil {
-			if err := s.writeError(ctx, conn, err); err != nil {
+			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
 				return
 			}
 			continue
@@ -129,17 +130,15 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		res, err := s.executor.Execute(cmd)
 		if err != nil {
-			if err := s.writeError(ctx, conn, err); err != nil {
+			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
 				return
 			}
 			continue
 		}
 
-		if err := s.writeRes(ctx, conn, res); err != nil {
+		if err := s.write(ctx, conn, s.serializer.Serialize(res)); err != nil {
 			return
 		}
-
-		conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -151,20 +150,9 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error {
+func (s *Server) write(ctx context.Context, conn net.Conn, text string) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
-	_, werr := fmt.Fprintf(conn, "ERR %s\n", err)
-	if werr != nil {
-		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
-		return werr
-	}
-
-	return nil
-}
-
-func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
-	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
-	_, werr := fmt.Fprintf(conn, "%s\n", s.serializer.Serialize(res))
+	_, werr := fmt.Fprintf(conn, "%s\n", text)
 	if werr != nil {
 		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr
