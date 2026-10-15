@@ -20,6 +20,7 @@ type StringStorage interface {
 
 type ListStorage interface {
 	RPush(key string, values ...string) (int, error)
+	LPush(key string, values ...string) (int, error)
 	LRange(key string, start, stop int) ([]string, error)
 }
 
@@ -48,6 +49,13 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		return domain.StringResult(record.Value), nil
 	case domain.RPushCmd:
 		n, err := e.listStorage.RPush(cmd.Key, cmd.Values...)
+		if err != nil {
+			return nil, err
+		}
+
+		return domain.StringResult(fmt.Sprintf("(integer) %d", n)), nil
+	case domain.LPushCmd:
+		n, err := e.listStorage.LPush(cmd.Key, cmd.Values...)
 		if err != nil {
 			return nil, err
 		}

@@ -9,6 +9,42 @@ func newTestListStorage() *ListStorage {
 	return NewListStorage(Config{ShardCount: 4})
 }
 
+func TestListStorage_LPush(t *testing.T) {
+	s := newTestListStorage()
+
+	n, err := s.LPush("list_key", "a", "b", "c")
+	if err != nil {
+		t.Fatalf("LPush returned unexpected error: %v", err)
+	}
+	if n != 3 {
+		t.Fatalf("LPush returned %d, want 3", n)
+	}
+
+	got, err := s.LRange("list_key", 0, -1)
+	if err != nil {
+		t.Fatalf("LRange returned unexpected error: %v", err)
+	}
+	if want := []string{"c", "b", "a"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LRange after LPush = %v, want %v", got, want)
+	}
+
+	n, err = s.LPush("list_key", "d", "e")
+	if err != nil {
+		t.Fatalf("LPush returned unexpected error: %v", err)
+	}
+	if n != 5 {
+		t.Fatalf("LPush returned %d, want 5", n)
+	}
+
+	got, err = s.LRange("list_key", 0, -1)
+	if err != nil {
+		t.Fatalf("LRange returned unexpected error: %v", err)
+	}
+	if want := []string{"e", "d", "c", "b", "a"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LRange after second LPush = %v, want %v", got, want)
+	}
+}
+
 func TestListStorage_LRange(t *testing.T) {
 	s := newTestListStorage()
 	if _, err := s.RPush("list_key", "a", "b", "c", "d", "e"); err != nil {

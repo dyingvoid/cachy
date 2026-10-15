@@ -2,6 +2,7 @@ package core_parser
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/dyingvoid/cachy/internal/domain"
@@ -122,6 +123,43 @@ func TestParser_Parse_LRange(t *testing.T) {
 	}
 }
 
+func TestParser_Parse_LPush(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want domain.LPushCmd
+	}{
+		{
+			name: "single value",
+			in:   "LPUSH list_key a",
+			want: domain.LPushCmd{Key: "list_key", Values: []string{"a"}},
+		},
+		{
+			name: "multiple values",
+			in:   "LPUSH list_key a b c",
+			want: domain.LPushCmd{Key: "list_key", Values: []string{"a", "b", "c"}},
+		},
+		{
+			name: "lowercase command",
+			in:   "lpush list_key a b",
+			want: domain.LPushCmd{Key: "list_key", Values: []string{"a", "b"}},
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, err := p.Parse(tt.in)
+			if err != nil {
+				t.Fatalf("Parse(%q) returned unexpected error: %v", tt.in, err)
+			}
+			if !reflect.DeepEqual(cmd, tt.want) {
+				t.Fatalf("Parse(%q) = %+v, want %+v", tt.in, cmd, tt.want)
+			}
+		})
+	}
+}
+
 func TestParser_Parse_Errors(t *testing.T) {
 	tests := []struct {
 		name string
@@ -166,6 +204,11 @@ func TestParser_Parse_Errors(t *testing.T) {
 		{
 			name: "set with non positive expiry",
 			in:   "SET mykey value EX 0",
+			want: domain_errors.ErrInvalidArguments,
+		},
+		{
+			name: "lpush with no values",
+			in:   "LPUSH mykey",
 			want: domain_errors.ErrInvalidArguments,
 		},
 		{

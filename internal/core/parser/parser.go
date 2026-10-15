@@ -33,6 +33,8 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 		return parseSetArgs(args)
 	case "RPUSH":
 		return parseRPushArgs(args)
+	case "LPUSH":
+		return parseLPushArgs(args)
 	case "LRANGE":
 		return parseLRangeArgs(args)
 	default:
@@ -84,6 +86,14 @@ func parseRPushArgs(args []string) (domain.RPushCmd, error) {
 	}
 
 	return domain.RPushCmd{Key: args[0], Values: args[1:]}, nil
+}
+
+func parseLPushArgs(args []string) (domain.LPushCmd, error) {
+	if len(args) < 2 {
+		return domain.LPushCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	return domain.LPushCmd{Key: args[0], Values: args[1:]}, nil
 }
 
 func parseLRangeArgs(args []string) (domain.LRangeCmd, error) {

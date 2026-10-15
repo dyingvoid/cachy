@@ -40,6 +40,15 @@ func (lr *ListRecord) PushBack(values ...string) {
 	lr.List = append(lr.List, values...)
 }
 
+func (lr *ListRecord) PushFront(values ...string) {
+	front := make([]string, 0, len(values))
+	for i := len(values) - 1; i >= 0; i-- {
+		front = append(front, values[i])
+	}
+
+	lr.List = append(front, lr.List...)
+}
+
 func (lr *ListRecord) Len() int {
 	return len(lr.List)
 }
