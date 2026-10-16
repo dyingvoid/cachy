@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dyingvoid/cachy/internal/domain"
-	"github.com/dyingvoid/cachy/internal/logger"
+	"github.com/dyingvoid/cachy/internal/core/logger"
 )
 
 type Server struct {
@@ -110,7 +110,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	log := s.log.With(slog.String("addr", conn.RemoteAddr().String()))
 	log.Info("New connection")
 
-	ctx = logger.ToContext(ctx, log)
+	ctx = core_logger.ToContext(ctx, log)
 
 	scanner := bufio.NewScanner(conn)
 	for {
@@ -142,7 +142,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		logger.FromContext(ctx).Error(
+		core_logger.FromContext(ctx).Error(
 			"read error",
 			slog.String("addr", conn.RemoteAddr().String()),
 			slog.Any("error", err),
@@ -154,7 +154,7 @@ func (s *Server) write(ctx context.Context, conn net.Conn, text string) error {
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	_, werr := fmt.Fprintf(conn, "%s\n", text)
 	if werr != nil {
-		logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
+		core_logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr
 	}
 
