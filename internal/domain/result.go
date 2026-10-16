@@ -6,8 +6,12 @@ type Result interface {
 
 type StringResult string
 
-func (StringResult) isResult() {}
-
 type ListResult []string
 
+type MapResult map[string]string
+
 func (ListResult) isResult() {}
+
+func (StringResult) isResult() {}
+
+func (MapResult) isResult() {}

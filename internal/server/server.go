@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
 	"github.com/dyingvoid/cachy/internal/domain"
-	"github.com/dyingvoid/cachy/internal/core/logger"
 )
 
 type Server struct {
@@ -122,7 +122,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		cmd, err := s.parser.Parse(scanner.Text())
 		if err != nil {
-			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
+			if err := s.writeError(ctx, conn, err); err != nil {
 				return
 			}
 			continue
@@ -130,13 +130,13 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 		res, err := s.executor.Execute(cmd)
 		if err != nil {
-			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
+			if err := s.writeError(ctx, conn, err); err != nil {
 				return
 			}
 			continue
 		}
 
-		if err := s.write(ctx, conn, s.serializer.Serialize(res)); err != nil {
+		if err := s.writeRes(ctx, conn, res); err != nil {
 			return
 		}
 	}
@@ -148,6 +148,14 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 			slog.Any("error", err),
 		)
 	}
+}
+
+func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
+	return s.write(ctx, conn, s.serializer.Serialize(res))
+}
+
+func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error {
+	return s.write(ctx, conn, s.serializer.SerializeError(err))
 }
 
 func (s *Server) write(ctx context.Context, conn net.Conn, text string) error {

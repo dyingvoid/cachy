@@ -3,6 +3,7 @@ package core_executor
 import (
 	"fmt"
 
+	"github.com/dyingvoid/cachy/internal/config"
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
@@ -54,9 +55,18 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 		return e.executeLLen(cmd)
 	case domain.LPopCmd:
 		return e.executeLPop(cmd)
+	case domain.InfoCmd:
+		return e.executeInfo(cmd)
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}
+}
+
+func (e *Executor) executeInfo(cmd domain.InfoCmd) (domain.Result, error) {
+	m := map[string]string{
+		"role": config.Get().Role,
+	}
+	return domain.MapResult(m), nil
 }
 
 func (e *Executor) executeLLen(cmd domain.LLenCmd) (domain.Result, error) {

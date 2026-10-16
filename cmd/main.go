@@ -23,6 +23,7 @@ func main() {
 	defer stop()
 
 	appCfg := config.NewMust()
+	config.Set(&appCfg)
 	time.Local = appCfg.TimeZone
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))

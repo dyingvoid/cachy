@@ -41,6 +41,8 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 		return parseLLenArgs(args)
 	case "LPOP":
 		return parseLPopArgs(args)
+	case "INFO":
+		return parseInfoArgs(args)
 	default:
 		return nil, fmt.Errorf("can't parse %s: %w", name, domain_errors.ErrUnknownCommand)
 	}
@@ -137,4 +139,12 @@ func parseLPopArgs(args []string) (domain.LPopCmd, error) {
 	}
 
 	return domain.LPopCmd{Key: args[0], Count: count}, nil
+}
+
+func parseInfoArgs(args []string) (domain.InfoCmd, error) {
+	if len(args) != 0 {
+		return domain.InfoCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	return domain.InfoCmd{}, nil
 }

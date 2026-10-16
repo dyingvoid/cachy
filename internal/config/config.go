@@ -3,13 +3,25 @@ package config
 import (
 	"fmt"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
+	Role     string `envconfig:"role" required:"true"`
 	TimeZone *time.Location
+}
+
+var global atomic.Pointer[Config]
+
+func Get() *Config {
+	return global.Load()
+}
+
+func Set(cfg *Config) {
+	global.Store(cfg)
 }
 
 func New() (Config, error) {

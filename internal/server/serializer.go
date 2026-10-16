@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dyingvoid/cachy/internal/domain"
@@ -19,11 +20,31 @@ func (s *TextSerializer) Serialize(res domain.Result) string {
 		return string(res)
 	case domain.ListResult:
 		return strings.Join(res, "\n")
+	case domain.MapResult:
+		return mapToString(res)
 	default:
-		return ""
+		panic(fmt.Sprintf("text serializer: unsupported result type %T, value: %#v", res, res))
 	}
 }
 
 func (s *TextSerializer) SerializeError(err error) string {
 	return fmt.Sprintf("(error) %s", err)
+}
+
+func mapToString(m domain.MapResult) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		fmt.Fprintf(&b, "%s:%s", k, m[k])
+	}
+
+	return b.String()
 }

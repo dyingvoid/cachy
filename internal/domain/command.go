@@ -41,6 +41,8 @@ type LPopCmd struct {
 	Count int
 }
 
+type InfoCmd struct{}
+
 func (SetCmd) isCommand() {}
 
 func (GetCmd) isCommand() {}
@@ -54,3 +56,5 @@ func (LRangeCmd) isCommand() {}
 func (LLenCmd) isCommand() {}
 
 func (LPopCmd) isCommand() {}
+
+func (InfoCmd) isCommand() {}
