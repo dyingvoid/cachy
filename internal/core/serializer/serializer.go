@@ -1,4 +1,4 @@
-package server
+package core_serializer
 
 import (
 	"fmt"

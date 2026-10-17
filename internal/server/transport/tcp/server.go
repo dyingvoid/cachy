@@ -1,4 +1,4 @@
-package server
+package transport_tcp
 
 import (
 	"bufio"
@@ -11,48 +11,34 @@ import (
 	"time"
 
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
-	"github.com/dyingvoid/cachy/internal/domain"
 )
 
 type Server struct {
-	cfg Config
+	cfg ServerConfig
 	log *slog.Logger
 
 	ln net.Listener
 	wg sync.WaitGroup
 
-	parser   Parser
-	executor Executor
-
-	serializer Serializer
+	handler Handler
 }
 
-type Parser interface {
-	Parse(in string) (domain.Command, error)
-}
-
-type Executor interface {
-	Execute(domain.Command) (domain.Result, error)
-}
-
-type Serializer interface {
-	Serialize(domain.Result) string
-	SerializeError(error) string
+type Handler interface {
+	Handle(ctx context.Context, request []byte) (
+		response []byte,
+		err error,
+	)
 }
 
 func NewServer(
-	cfg Config,
+	cfg ServerConfig,
 	log *slog.Logger,
-	parser Parser,
-	executor Executor,
-	serializer Serializer,
+	handler Handler,
 ) *Server {
 	return &Server{
-		cfg:        cfg,
-		log:        log,
-		parser:     parser,
-		executor:   executor,
-		serializer: serializer,
+		cfg:     cfg,
+		log:     log,
+		handler: handler,
 	}
 }
 
@@ -113,30 +99,15 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	ctx = core_logger.ToContext(ctx, log)
 
 	scanner := bufio.NewScanner(conn)
-	for {
+	for scanner.Scan() {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
-		if !scanner.Scan() {
-			log.Info("break", slog.String("addr", conn.RemoteAddr().String()))
-			break
-		}
-
-		cmd, err := s.parser.Parse(scanner.Text())
+		response, err := s.handler.Handle(ctx, scanner.Bytes())
 		if err != nil {
-			if err := s.writeError(ctx, conn, err); err != nil {
-				return
-			}
-			continue
+			log.Error("handler request", slog.Any("error", err))
+			return
 		}
 
-		res, err := s.executor.Execute(cmd)
-		if err != nil {
-			if err := s.writeError(ctx, conn, err); err != nil {
-				return
-			}
-			continue
-		}
-
-		if err := s.writeRes(ctx, conn, res); err != nil {
+		if err := s.write(ctx, conn, string(response)); err != nil {
 			return
 		}
 	}
@@ -148,14 +119,6 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 			slog.Any("error", err),
 		)
 	}
-}
-
-func (s *Server) writeRes(ctx context.Context, conn net.Conn, res domain.Result) error {
-	return s.write(ctx, conn, s.serializer.Serialize(res))
-}
-
-func (s *Server) writeError(ctx context.Context, conn net.Conn, err error) error {
-	return s.write(ctx, conn, s.serializer.SerializeError(err))
 }
 
 func (s *Server) write(ctx context.Context, conn net.Conn, text string) error {

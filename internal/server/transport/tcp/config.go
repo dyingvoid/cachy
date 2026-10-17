@@ -1,4 +1,4 @@
-package server
+package transport_tcp
 
 import (
 	"fmt"
@@ -7,24 +7,24 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
-type Config struct {
+type ServerConfig struct {
 	Port         int           `envconfig:"PORT"`
 	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT"`
 	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT"`
 }
 
-func NewConfig() (*Config, error) {
-	var cfg Config
+func NewConfig() (ServerConfig, error) {
+	var cfg ServerConfig
 	if err := envconfig.Process("SERVER", &cfg); err != nil {
-		return nil, fmt.Errorf("server: process config: %w", err)
+		return ServerConfig{}, fmt.Errorf("server: process config: %w", err)
 	}
 	if cfg.Port <= 0 || cfg.Port > 65535 {
-		return nil, fmt.Errorf("invalid port: %d", cfg.Port)
+		return ServerConfig{}, fmt.Errorf("invalid port: %d", cfg.Port)
 	}
-	return &cfg, nil
+	return cfg, nil
 }
 
-func NewConfigMust() *Config {
+func NewConfigMust() ServerConfig {
 	cfg, err := NewConfig()
 	if err != nil {
 		panic(err)
