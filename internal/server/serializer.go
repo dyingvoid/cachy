@@ -31,7 +31,8 @@ func (s *TextSerializer) SerializeError(err error) string {
 	return fmt.Sprintf("(error) %s", err)
 }
 
-func mapToString(m domain.MapResult) string {
+func mapToString(res domain.MapResult) string {
+	m := res.ToMap()
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

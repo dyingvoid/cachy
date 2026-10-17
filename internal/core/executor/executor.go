@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dyingvoid/cachy/internal/config"
+	core_state "github.com/dyingvoid/cachy/internal/core/state"
 	"github.com/dyingvoid/cachy/internal/domain"
 	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
 )
@@ -63,10 +64,14 @@ func (e *Executor) Execute(cmd domain.Command) (domain.Result, error) {
 }
 
 func (e *Executor) executeInfo(cmd domain.InfoCmd) (domain.Result, error) {
-	m := map[string]string{
-		"role": config.Get().Role,
-	}
-	return domain.MapResult(m), nil
+	cfg := config.Get()
+	info := domain.NewInfo(
+		cfg.Role, cfg.ReplicaOf,
+		core_state.ReplicationID(),
+		core_state.ReplicationOffset(),
+	)
+
+	return domain.MapResult(info), nil
 }
 
 func (e *Executor) executeLLen(cmd domain.LLenCmd) (domain.Result, error) {
