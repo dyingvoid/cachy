@@ -1,4 +1,4 @@
-package transport_tcp
+package transport_tcp_server
 
 import (
 	"bufio"

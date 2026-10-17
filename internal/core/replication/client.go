@@ -1,26 +1,85 @@
 package core_replication
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
-type Message struct {
-	ID   string
-	Data []byte
-}
-
-type Codec interface {
-	Encode(msg Message) ([]byte, error)
-}
-
-type Transport interface {
-	Send(ctx context.Context, payload []byte) error
-	Close() error
-}
+	core_state "github.com/dyingvoid/cachy/internal/core/state"
+)
 
 type ReplicationClient struct {
-	coded     Codec
-	transport Transport
+	codec     Codec
+	transport ClientTransport
 }
 
-func (rc *ReplicationClient) Handshake() {
+func NewReplicationClient(codec Codec, transport ClientTransport) *ReplicationClient {
+	return &ReplicationClient{
+		codec:     codec,
+		transport: transport,
+	}
+}
 
+func (c *ReplicationClient) Handshake(ctx context.Context) error {
+	resp, err := c.sendMsg(ctx, Message{Command: "PING"})
+	if err != nil {
+		return err
+	}
+	if resp != "PONG" {
+		return fmt.Errorf("unexpected PING response: %+v", resp)
+	}
+
+	for _, args := range [][]string{
+		{"listening-port", strconv.Itoa(c.transport.Port())},
+		{"capa", "psync2"},
+	} {
+		resp, err := c.sendMsg(ctx, Message{
+			Command: "REPLCONF",
+			Args:    args,
+		})
+		if err != nil {
+			return err
+		}
+		if resp != "OK" {
+			return fmt.Errorf("unexpected REPLCONF response: %+v", resp)
+		}
+	}
+
+	replicationID := core_state.ReplicationID()
+	offset := strconv.FormatInt(core_state.ReplicationOffset(), 10)
+	resp, err = c.sendMsg(ctx, Message{
+		Command: "PSYNC",
+		Args:    []string{replicationID, offset},
+	})
+	if err != nil {
+		return err
+	}
+
+	// TODO: better response validation
+	fields := strings.Fields(resp)
+	if len(fields) != 3 || fields[0] != "FULLRESYNC" {
+		return fmt.Errorf("unexpected psync response: %+v", resp)
+	}
+	return nil
+}
+
+func (c *ReplicationClient) sendMsg(ctx context.Context, msg Message) (string, error) {
+	var zero string
+	payload, err := c.codec.Encode(msg)
+	if err != nil {
+		return zero, fmt.Errorf("encode message: %w", err)
+	}
+
+	raw, err := c.transport.Send(ctx, payload)
+	if err != nil {
+		return zero, fmt.Errorf("send message: %w", err)
+	}
+
+	resp, err := c.codec.Decode(raw)
+	if err != nil {
+		return zero, fmt.Errorf("decode response: %w", err)
+	}
+
+	return resp, nil
 }
