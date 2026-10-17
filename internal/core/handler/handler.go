@@ -23,7 +23,12 @@ func NewProtocolHandler(
 	listStorage ListStorage,
 	serializer Serializer,
 ) *ProtocolHandler {
-	return &ProtocolHandler{}
+	return &ProtocolHandler{
+		parser:        parser,
+		stringStorage: stringStorage,
+		listStorage:   listStorage,
+		serializer:    serializer,
+	}
 }
 
 func (h *ProtocolHandler) Handle(
@@ -45,6 +50,8 @@ func (h *ProtocolHandler) Handle(
 
 func (h *ProtocolHandler) execute(ctx context.Context, cmd domain.Command) (domain.Result, error) {
 	switch cmd := cmd.(type) {
+	case domain.PingCmd:
+		return domain.StringResult("PONG"), nil
 	case domain.SetCmd:
 		return h.executeSet(cmd)
 	case domain.GetCmd:

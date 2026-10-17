@@ -27,6 +27,8 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 	args := fields[1:]
 
 	switch strings.ToUpper(name) {
+	case "PING":
+		return parsePingArgs(args)
 	case "GET":
 		return parseGetArgs(args)
 	case "SET":
@@ -84,6 +86,13 @@ func parseSetArgs(args []string) (domain.SetCmd, error) {
 	}
 
 	return cmd, nil
+}
+
+func parsePingArgs(args []string) (domain.PingCmd, error) {
+	if len(args) != 0 {
+		return domain.PingCmd{}, domain_errors.ErrInvalidArguments
+	}
+	return domain.PingCmd{}, nil
 }
 
 func parseRPushArgs(args []string) (domain.RPushCmd, error) {
