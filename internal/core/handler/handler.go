@@ -68,6 +68,8 @@ func (h *ProtocolHandler) execute(ctx context.Context, cmd domain.Command) (doma
 		return h.executeLPop(cmd)
 	case domain.InfoCmd:
 		return h.executeInfo(cmd)
+	case domain.ReplConfCmd:
+		return domain.StringResult("+OK"), nil
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", domain_errors.ErrUnknownCommand)
 	}

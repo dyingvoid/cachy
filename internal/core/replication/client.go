@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	core_state "github.com/dyingvoid/cachy/internal/core/state"
 )
 
 type ReplicationClient struct {
@@ -41,22 +39,19 @@ func (c *ReplicationClient) Handshake(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if resp != "OK" {
+		if resp != "+OK" {
 			return fmt.Errorf("unexpected REPLCONF response: %+v", resp)
 		}
 	}
 
-	replicationID := core_state.ReplicationID()
-	offset := strconv.FormatInt(core_state.ReplicationOffset(), 10)
 	resp, err = c.sendMsg(ctx, Message{
 		Command: "PSYNC",
-		Args:    []string{replicationID, offset},
+		Args:    []string{"?", "-1"},
 	})
 	if err != nil {
 		return err
 	}
 
-	// TODO: better response validation
 	fields := strings.Fields(resp)
 	if len(fields) != 3 || fields[0] != "FULLRESYNC" {
 		return fmt.Errorf("unexpected psync response: %+v", resp)

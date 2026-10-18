@@ -59,3 +59,9 @@ type LPopCmd struct {
 type InfoCmd struct {
 	commandMarker
 }
+
+type ReplConfCmd struct {
+	ListeningPort *int
+	Capa          *string
+	commandMarker
+}

@@ -45,8 +45,31 @@ func (p *Parser) Parse(in string) (domain.Command, error) {
 		return parseLPopArgs(args)
 	case "INFO":
 		return parseInfoArgs(args)
+	case "REPLCONF":
+		return parseReplConfArgs(args)
 	default:
 		return nil, fmt.Errorf("can't parse %s: %w", name, domain_errors.ErrUnknownCommand)
+	}
+}
+
+func parseReplConfArgs(args []string) (domain.ReplConfCmd, error) {
+	if len(args) != 2 {
+		return domain.ReplConfCmd{}, domain_errors.ErrInvalidArguments
+	}
+
+	switch args[0] {
+	case "listening-port":
+		port, err := strconv.Atoi(args[1])
+		if err != nil {
+			return domain.ReplConfCmd{}, domain_errors.ErrInvalidArguments
+		}
+		return domain.ReplConfCmd{ListeningPort: &port}, nil
+
+	case "capa":
+		return domain.ReplConfCmd{Capa: &args[1]}, nil
+
+	default:
+		return domain.ReplConfCmd{}, domain_errors.ErrInvalidArguments
 	}
 }
 
