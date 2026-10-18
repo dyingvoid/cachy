@@ -17,11 +17,7 @@ func parseLPushArgs(args []string) (LPushCmd, error) {
 }
 
 func (h *ProtocolHandler) executeLPush(cmd LPushCmd) (Result, error) {
-	if err := h.ensureListKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
-	n, err := h.listStorage.LPush(cmd.Key, cmd.Values...)
+	n, err := h.storage.LPush(cmd.Key, cmd.Values...)
 	if err != nil {
 		return nil, err
 	}

@@ -46,12 +46,8 @@ func parseSetArgs(args []string) (SetCmd, error) {
 }
 
 func (h *ProtocolHandler) executeSet(cmd SetCmd) (Result, error) {
-	if err := h.ensureStringKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
 	r := domain.NewStringRecord(cmd.Value, cmd.Expiry)
-	if err := h.stringStorage.Set(cmd.Key, r); err != nil {
+	if err := h.storage.Set(cmd.Key, r); err != nil {
 		return nil, err
 	}
 

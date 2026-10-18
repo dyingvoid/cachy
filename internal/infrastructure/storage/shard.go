@@ -1,4 +1,4 @@
-package core_storage
+package infrastructure_storage
 
 import (
 	"hash/fnv"

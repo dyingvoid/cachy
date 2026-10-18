@@ -28,11 +28,7 @@ func parseLRangeArgs(args []string) (LRangeCmd, error) {
 }
 
 func (h *ProtocolHandler) executeLRange(cmd LRangeCmd) (Result, error) {
-	if err := h.ensureListKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
-	values, err := h.listStorage.LRange(cmd.Key, cmd.Start, cmd.Stop)
+	values, err := h.storage.LRange(cmd.Key, cmd.Start, cmd.Stop)
 	if err != nil {
 		return nil, err
 	}

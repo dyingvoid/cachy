@@ -6,23 +6,20 @@ import (
 )
 
 type ProtocolHandler struct {
-	parser        Parser
-	stringStorage StringStorage
-	listStorage   ListStorage
-	serializer    Serializer
+	parser     Parser
+	storage    Storage
+	serializer Serializer
 }
 
 func NewProtocolHandler(
 	parser Parser,
-	stringStorage StringStorage,
-	listStorage ListStorage,
+	storage Storage,
 	serializer Serializer,
 ) *ProtocolHandler {
 	return &ProtocolHandler{
-		parser:        parser,
-		stringStorage: stringStorage,
-		listStorage:   listStorage,
-		serializer:    serializer,
+		parser:     parser,
+		storage:    storage,
+		serializer: serializer,
 	}
 }
 
@@ -68,20 +65,4 @@ func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) (Result, err
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
 	}
-}
-
-func (h *ProtocolHandler) ensureStringKey(key string) error {
-	if h.listStorage.Exists(key) {
-		return ErrWrongType
-	}
-
-	return nil
-}
-
-func (h *ProtocolHandler) ensureListKey(key string) error {
-	if h.stringStorage.Exists(key) {
-		return ErrWrongType
-	}
-
-	return nil
 }

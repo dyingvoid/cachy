@@ -16,11 +16,7 @@ func parseLLenArgs(args []string) (LLenCmd, error) {
 }
 
 func (h *ProtocolHandler) executeLLen(cmd LLenCmd) (Result, error) {
-	if err := h.ensureListKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
-	n, err := h.listStorage.LLen(cmd.Key)
+	n, err := h.storage.LLen(cmd.Key)
 	if err != nil {
 		return nil, err
 	}

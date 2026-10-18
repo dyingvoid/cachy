@@ -22,11 +22,7 @@ func parseLPopArgs(args []string) (LPopCmd, error) {
 }
 
 func (h *ProtocolHandler) executeLPop(cmd LPopCmd) (Result, error) {
-	if err := h.ensureListKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
-	values, err := h.listStorage.LPop(cmd.Key, cmd.Count)
+	values, err := h.storage.LPop(cmd.Key, cmd.Count)
 	if err != nil {
 		return nil, err
 	}

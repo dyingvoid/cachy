@@ -10,8 +10,8 @@ import (
 
 	"github.com/dyingvoid/cachy/internal/config"
 	core_serializer "github.com/dyingvoid/cachy/internal/core/serializer"
-	core_storage "github.com/dyingvoid/cachy/internal/core/storage"
 	"github.com/dyingvoid/cachy/internal/features"
+	infrastructure_storage "github.com/dyingvoid/cachy/internal/infrastructure/storage"
 	transport_tcp_server "github.com/dyingvoid/cachy/internal/transport/tcp/server"
 )
 
@@ -28,7 +28,7 @@ func main() {
 	config.Set(&appCfg)
 	time.Local = appCfg.TimeZone
 	serverConfig := transport_tcp_server.NewConfigMust()
-	storageCfg := core_storage.NewConfigMust()
+	storageCfg := infrastructure_storage.NewConfigMust()
 
 	log.Info(
 		"config",
@@ -37,12 +37,11 @@ func main() {
 		slog.Any("storage", *storageCfg),
 	)
 
-	memStorage := core_storage.NewMemoryStorage(log, *storageCfg)
-	listStorage := core_storage.NewListStorage(*storageCfg)
+	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
 	parser := features.NewProtocolParser()
 	serializer := core_serializer.NewTextSerializer()
 
-	h := features.NewProtocolHandler(parser, memStorage, listStorage, serializer)
+	h := features.NewProtocolHandler(parser, storage, serializer)
 
 	server := transport_tcp_server.NewServer(
 		serverConfig, log, h,

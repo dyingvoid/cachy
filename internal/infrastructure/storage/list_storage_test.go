@@ -1,16 +1,25 @@
-package core_storage
+package infrastructure_storage
 
 import (
+	"log/slog"
 	"reflect"
 	"testing"
+	"time"
 )
 
-func newTestListStorage() *ListStorage {
-	return NewListStorage(Config{ShardCount: 4})
+func newTestStorage() *MemoryStorage {
+	return NewMemoryStorage(
+		slog.Default(),
+		Config{
+			ShardCount:       4,
+			CleanupInterval:  time.Hour,
+			CleanupBatchSize: 100,
+		},
+	)
 }
 
-func TestListStorage_LPush(t *testing.T) {
-	s := newTestListStorage()
+func TestMemoryStorage_LPush(t *testing.T) {
+	s := newTestStorage()
 
 	n, err := s.LPush("list_key", "a", "b", "c")
 	if err != nil {
@@ -45,8 +54,8 @@ func TestListStorage_LPush(t *testing.T) {
 	}
 }
 
-func TestListStorage_LLen(t *testing.T) {
-	s := newTestListStorage()
+func TestMemoryStorage_LLen(t *testing.T) {
+	s := newTestStorage()
 
 	n, err := s.LLen("missing")
 	if err != nil {
@@ -81,8 +90,8 @@ func TestListStorage_LLen(t *testing.T) {
 	}
 }
 
-func TestListStorage_LPop(t *testing.T) {
-	s := newTestListStorage()
+func TestMemoryStorage_LPop(t *testing.T) {
+	s := newTestStorage()
 	if _, err := s.RPush("list_key", "a", "b", "c", "d"); err != nil {
 		t.Fatalf("RPush returned unexpected error: %v", err)
 	}
@@ -124,8 +133,8 @@ func TestListStorage_LPop(t *testing.T) {
 	}
 }
 
-func TestListStorage_LRange(t *testing.T) {
-	s := newTestListStorage()
+func TestMemoryStorage_LRange(t *testing.T) {
+	s := newTestStorage()
 	if _, err := s.RPush("list_key", "a", "b", "c", "d", "e"); err != nil {
 		t.Fatalf("RPush returned unexpected error: %v", err)
 	}

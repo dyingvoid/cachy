@@ -19,18 +19,15 @@ type Serializer interface {
 	SerializeError(error) string
 }
 
-type StringStorage interface {
+type Storage interface {
 	Set(key string, value domain.StringRecord) error
 	Get(key string) (domain.StringRecord, error)
 	Delete(key string) error
 	Exists(key string) bool
-}
 
-type ListStorage interface {
 	RPush(key string, values ...string) (int, error)
 	LPush(key string, values ...string) (int, error)
 	LRange(key string, start, stop int) ([]string, error)
 	LLen(key string) (int, error)
 	LPop(key string, count int) ([]string, error)
-	Exists(key string) bool
 }

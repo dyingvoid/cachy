@@ -16,11 +16,7 @@ func parseGetArgs(args []string) (GetCmd, error) {
 }
 
 func (h *ProtocolHandler) executeGet(cmd GetCmd) (Result, error) {
-	if err := h.ensureStringKey(cmd.Key); err != nil {
-		return nil, err
-	}
-
-	record, err := h.stringStorage.Get(cmd.Key)
+	record, err := h.storage.Get(cmd.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch: %w", err)
 	}
