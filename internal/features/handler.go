@@ -8,17 +8,20 @@ import (
 )
 
 type ProtocolHandler struct {
-	parser  Parser
-	storage Storage
+	parser      Parser
+	storage     Storage
+	replication *ReplicationHandler
 }
 
 func NewProtocolHandler(
 	parser Parser,
 	storage Storage,
+	replication *ReplicationHandler,
 ) *ProtocolHandler {
 	return &ProtocolHandler{
-		parser:  parser,
-		storage: storage,
+		parser:      parser,
+		storage:     storage,
+		replication: replication,
 	}
 }
 
@@ -66,6 +69,14 @@ func (h *ProtocolHandler) execute(
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
 	}
+}
+
+func (h *ProtocolHandler) replicate(cmd ReplicationCommand) {
+	if h.replication == nil {
+		return
+	}
+
+	h.replication.Publish(cmd)
 }
 
 func singleResult(result Result, err error) ([]Result, error) {

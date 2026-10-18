@@ -51,5 +51,7 @@ func (h *ProtocolHandler) executeSet(cmd SetCmd) (Result, error) {
 		return nil, err
 	}
 
+	h.replicate(cmd)
+
 	return StringResult("OK"), nil
 }

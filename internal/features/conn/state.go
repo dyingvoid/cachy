@@ -19,7 +19,7 @@ func NewState() *State {
 }
 
 func (s *State) TryStartReplication() bool {
-	if !s.Replication.Ready() {
+	if s.Mode == ModeReplicationStreaming || !s.Replication.Ready() {
 		return false
 	}
 

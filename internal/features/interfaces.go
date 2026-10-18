@@ -16,6 +16,7 @@ type Executor interface {
 
 type Serializer interface {
 	Serialize(Result) string
+	SerializeCommand(ReplicationCommand) string
 	SerializeError(error) string
 }
 

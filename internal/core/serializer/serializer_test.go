@@ -2,6 +2,7 @@ package core_serializer
 
 import (
 	"testing"
+	"time"
 
 	"github.com/dyingvoid/cachy/internal/features"
 )
@@ -34,6 +35,57 @@ func TestTextSerializerSerialize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := s.Serialize(tt.result); got != tt.want {
 				t.Fatalf("Serialize() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTextSerializerSerializeCommand(t *testing.T) {
+	seconds := 10 * time.Second
+	milliseconds := 1500 * time.Millisecond
+
+	tests := []struct {
+		name    string
+		command features.ReplicationCommand
+		want    string
+	}{
+		{
+			name:    "set",
+			command: features.SetCmd{Key: "key", Value: "value"},
+			want:    "SET key value",
+		},
+		{
+			name:    "set with seconds",
+			command: features.SetCmd{Key: "key", Value: "value", Expiry: &seconds},
+			want:    "SET key value EX 10",
+		},
+		{
+			name:    "set with milliseconds",
+			command: features.SetCmd{Key: "key", Value: "value", Expiry: &milliseconds},
+			want:    "SET key value PX 1500",
+		},
+		{
+			name:    "rpush",
+			command: features.RPushCmd{Key: "key", Values: []string{"a", "b"}},
+			want:    "RPUSH key a b",
+		},
+		{
+			name:    "lpush",
+			command: features.LPushCmd{Key: "key", Values: []string{"a", "b"}},
+			want:    "LPUSH key a b",
+		},
+		{
+			name:    "lpop",
+			command: features.LPopCmd{Key: "key", Count: 2},
+			want:    "LPOP key 2",
+		},
+	}
+
+	s := NewTextSerializer()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := s.SerializeCommand(tt.command); got != tt.want {
+				t.Fatalf("SerializeCommand() = %q, want %q", got, tt.want)
 			}
 		})
 	}

@@ -29,19 +29,22 @@ func main() {
 	time.Local = appCfg.TimeZone
 	serverConfig := transport_tcp_server.NewConfigMust()
 	storageCfg := infrastructure_storage.NewConfigMust()
+	featuresCfg := features.NewConfigMust()
 
 	log.Info(
 		"config",
 		slog.Int("server port", serverConfig.Port),
 		slog.String("time_zone", appCfg.TimeZone.String()),
 		slog.Any("storage", *storageCfg),
+		slog.Any("features", featuresCfg),
 	)
 
 	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
 	parser := features.NewProtocolParser()
 	serializer := core_serializer.NewTextSerializer()
+	replicationHandler := features.NewReplicationHandler(featuresCfg.ReplicationBuffer)
 
-	h := features.NewProtocolHandler(parser, storage)
+	h := features.NewProtocolHandler(parser, storage, replicationHandler)
 
 	server := transport_tcp_server.NewServer(
 		serverConfig, log, h, serializer,

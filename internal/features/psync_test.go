@@ -47,7 +47,7 @@ func TestParser_Parse_PsyncErrors(t *testing.T) {
 }
 
 func TestExecutePsync(t *testing.T) {
-	h := &ProtocolHandler{}
+	h := &ProtocolHandler{replication: NewReplicationHandler(100)}
 	port := 8081
 	capa := "psync2"
 	state := &features_conn.State{
@@ -61,16 +61,32 @@ func TestExecutePsync(t *testing.T) {
 	if err != nil {
 		t.Fatalf("executePsync returned unexpected error: %v", err)
 	}
+	if len(res) != 3 {
+		t.Fatalf("executePsync returned %d results, want 3", len(res))
+	}
 
 	want := []Result{
 		StringResult("FULLRESYNC " + core_state.ReplicationID() + " 0"),
 		FileResult{Len: 0, Content: []byte{}},
-		StreamingResult{},
 	}
-	if !reflect.DeepEqual(res, want) {
-		t.Fatalf("executePsync = %#v, want %#v", res, want)
+	if !reflect.DeepEqual(res[:2], want) {
+		t.Fatalf("executePsync = %#v, want %#v", res[:2], want)
 	}
+
+	streaming, ok := res[2].(StreamingResult)
+	if !ok {
+		t.Fatalf("executePsync third result = %T, want StreamingResult", res[2])
+	}
+	if streaming.Stream == nil {
+		t.Fatal("executePsync returned StreamingResult with nil stream")
+	}
+	defer streaming.Stream.Close()
+
 	if state.Mode != features_conn.ModeReplicationStreaming {
 		t.Fatalf("state mode = %v, want %v", state.Mode, features_conn.ModeReplicationStreaming)
+	}
+
+	if _, err := h.executePsync(state, PsyncCmd{ReplicationID: "?", Offset: -1}); !errors.Is(err, ErrReplicationStateIncomplete) {
+		t.Fatalf("second executePsync error = %v, want %v", err, ErrReplicationStateIncomplete)
 	}
 }

@@ -96,12 +96,22 @@ func (s *Server) loop(ctx context.Context) error {
 }
 
 func (s *Server) handle(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
-
 	log := s.log.With(slog.String("addr", conn.RemoteAddr().String()))
 	log.Info("New connection")
 
 	ctx = core_logger.ToContext(ctx, log)
+
+	var writeMu sync.Mutex
+	var stream *features.ReplicationStream
+	var streamDone chan struct{}
+
+	defer func() {
+		conn.Close()
+		if stream != nil {
+			stream.Close()
+			<-streamDone
+		}
+	}()
 
 	state := features_conn.NewState()
 	scanner := bufio.NewScanner(conn)
@@ -109,17 +119,24 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
 		results, err := s.handler.Handle(ctx, state, scanner.Bytes())
 		if err != nil {
-			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
+			if err := s.write(ctx, conn, &writeMu, s.serializer.SerializeError(err)); err != nil {
 				return
 			}
 			continue
 		}
 
 		for _, result := range results {
-			if _, ok := result.(features.StreamingResult); ok {
-				panic("TODO")
+			streaming, ok := result.(features.StreamingResult)
+			if ok {
+				if stream == nil && streaming.Stream != nil {
+					stream = streaming.Stream
+					streamDone = make(chan struct{})
+					go s.writeStream(ctx, conn, &writeMu, stream, streamDone)
+				}
+				continue
 			}
-			if err := s.write(ctx, conn, s.serializer.Serialize(result)); err != nil {
+
+			if err := s.write(ctx, conn, &writeMu, s.serializer.Serialize(result)); err != nil {
 				return
 			}
 		}
@@ -134,7 +151,32 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (s *Server) write(ctx context.Context, conn net.Conn, text string) error {
+func (s *Server) writeStream(
+	ctx context.Context,
+	conn net.Conn,
+	mu *sync.Mutex,
+	stream *features.ReplicationStream,
+	done chan<- struct{},
+) {
+	defer close(done)
+
+	for cmd := range stream.Commands() {
+		if err := s.write(ctx, conn, mu, s.serializer.SerializeCommand(cmd)); err != nil {
+			conn.Close()
+			return
+		}
+	}
+}
+
+func (s *Server) write(
+	ctx context.Context,
+	conn net.Conn,
+	mu *sync.Mutex,
+	text string,
+) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
 	_, werr := fmt.Fprintf(conn, "%s\n", text)
 	if werr != nil {

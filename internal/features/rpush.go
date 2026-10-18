@@ -22,5 +22,7 @@ func (h *ProtocolHandler) executeRPush(cmd RPushCmd) (Result, error) {
 		return nil, err
 	}
 
+	h.replicate(cmd)
+
 	return StringResult(fmt.Sprintf("(integer) %d", n)), nil
 }

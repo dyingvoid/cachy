@@ -52,7 +52,9 @@ type FileResult struct {
 	Content []byte
 }
 
-type StreamingResult struct{}
+type StreamingResult struct {
+	Stream *ReplicationStream
+}
 
 func (ListResult) isResult() {}
 

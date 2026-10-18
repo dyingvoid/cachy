@@ -27,5 +27,7 @@ func (h *ProtocolHandler) executeLPop(cmd LPopCmd) (Result, error) {
 		return nil, err
 	}
 
+	h.replicate(cmd)
+
 	return ListResult(values), nil
 }

@@ -48,6 +48,6 @@ func (h *ProtocolHandler) executePsync(
 			core_state.ReplicationOffset(),
 		)),
 		FileResult{Len: 0, Content: []byte{}},
-		StreamingResult{},
+		StreamingResult{Stream: h.replication.Subscribe()},
 	}, nil
 }
