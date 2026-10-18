@@ -5,123 +5,106 @@ import (
 )
 
 func (s *MemoryStorage) RPush(key string, values ...string) (int, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
 
-	lsh.mu.Lock()
-	defer lsh.mu.Unlock()
-
-	if hasLiveString(ssh.data, key) {
+	record, ok := sh.data[key]
+	if ok && hasLiveString(record) {
 		return 0, domain.ErrWrongType
 	}
 
-	record, ok := lsh.data[key]
+	list, ok := record.(*domain.ListRecord)
 	if !ok {
-		record = domain.NewListRecord()
+		list = domain.NewListRecord()
 	}
 
-	record.PushBack(values...)
-	lsh.data[key] = record
+	list.PushBack(values...)
+	sh.data[key] = list
 
-	return record.Len(), nil
+	return list.Len(), nil
 }
 
 func (s *MemoryStorage) LPush(key string, values ...string) (int, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
 
-	lsh.mu.Lock()
-	defer lsh.mu.Unlock()
-
-	if hasLiveString(ssh.data, key) {
+	record, ok := sh.data[key]
+	if ok && hasLiveString(record) {
 		return 0, domain.ErrWrongType
 	}
 
-	record, ok := lsh.data[key]
+	list, ok := record.(*domain.ListRecord)
 	if !ok {
-		record = domain.NewListRecord()
+		list = domain.NewListRecord()
 	}
 
-	record.PushFront(values...)
-	lsh.data[key] = record
+	list.PushFront(values...)
+	sh.data[key] = list
 
-	return record.Len(), nil
+	return list.Len(), nil
 }
 
 func (s *MemoryStorage) LRange(key string, start, stop int) ([]string, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
-
-	if hasLiveString(ssh.data, key) {
+	record, ok := sh.data[key]
+	if ok && hasLiveString(record) {
 		return nil, domain.ErrWrongType
 	}
 
-	record, ok := lsh.data[key]
+	list, ok := record.(*domain.ListRecord)
 	if !ok {
 		return []string{}, nil
 	}
 
-	return record.Range(start, stop), nil
+	return list.Range(start, stop), nil
 }
 
 func (s *MemoryStorage) LLen(key string) (int, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
-
-	if hasLiveString(ssh.data, key) {
+	record, ok := sh.data[key]
+	if ok && hasLiveString(record) {
 		return 0, domain.ErrWrongType
 	}
 
-	record, ok := lsh.data[key]
+	list, ok := record.(*domain.ListRecord)
 	if !ok {
 		return 0, nil
 	}
 
-	return record.Len(), nil
+	return list.Len(), nil
 }
 
 func (s *MemoryStorage) LPop(key string, count int) ([]string, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
 
-	lsh.mu.Lock()
-	defer lsh.mu.Unlock()
-
-	if hasLiveString(ssh.data, key) {
+	record, ok := sh.data[key]
+	if ok && hasLiveString(record) {
 		return nil, domain.ErrWrongType
 	}
 
-	record, ok := lsh.data[key]
+	list, ok := record.(*domain.ListRecord)
 	if !ok {
 		return []string{}, nil
 	}
 
-	values := record.PopFront(count)
-	if record.Len() == 0 {
-		delete(lsh.data, key)
-	} else {
-		lsh.data[key] = record
+	values := list.PopFront(count)
+	if list.Len() == 0 {
+		delete(sh.data, key)
 	}
 
 	return values, nil

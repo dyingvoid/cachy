@@ -9,14 +9,14 @@ import (
 	"github.com/dyingvoid/cachy/internal/domain"
 )
 
-type shard[T domain.StringRecord | domain.ListRecord] struct {
+type shard struct {
 	mu   sync.RWMutex
-	data map[string]T
+	data map[string]domain.Record
 }
 
-type shardCollection[T domain.StringRecord | domain.ListRecord] []shard[T]
+type shardCollection []shard
 
-func (s shardCollection[T]) getShard(key string) *shard[T] {
+func (s shardCollection) getShard(key string) *shard {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(key))
 
@@ -26,7 +26,7 @@ func (s shardCollection[T]) getShard(key string) *shard[T] {
 
 func cleanup(
 	log *slog.Logger,
-	shard *shard[domain.StringRecord],
+	shard *shard,
 	interval time.Duration,
 	batchSize int,
 ) {

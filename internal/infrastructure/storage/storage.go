@@ -7,45 +7,34 @@ import (
 )
 
 type MemoryStorage struct {
-	strings shardCollection[domain.StringRecord]
-	lists   shardCollection[domain.ListRecord]
+	shards shardCollection
 }
 
 func NewMemoryStorage(log *slog.Logger, cfg Config) *MemoryStorage {
 	s := &MemoryStorage{
-		strings: make([]shard[domain.StringRecord], cfg.ShardCount),
-		lists:   make([]shard[domain.ListRecord], cfg.ShardCount),
+		shards: make(shardCollection, cfg.ShardCount),
 	}
-	for i := range s.strings {
-		s.strings[i].data = make(map[string]domain.StringRecord)
-		go cleanup(log, &s.strings[i], cfg.CleanupInterval, cfg.CleanupBatchSize)
-	}
-	for i := range s.lists {
-		s.lists[i].data = make(map[string]domain.ListRecord)
+	for i := range s.shards {
+		s.shards[i].data = make(map[string]domain.Record)
+		go cleanup(log, &s.shards[i], cfg.CleanupInterval, cfg.CleanupBatchSize)
 	}
 
 	return s
 }
 
 func (s *MemoryStorage) Exists(key string) bool {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
-
-	if _, ok := lsh.data[key]; ok {
-		return true
-	}
-
-	return hasLiveString(ssh.data, key)
-}
-
-func hasLiveString(data map[string]domain.StringRecord, key string) bool {
-	record, ok := data[key]
+	record, ok := sh.data[key]
 
 	return ok && !record.Expired()
+}
+
+func hasLiveString(record domain.Record) bool {
+	stringRecord, ok := record.(domain.StringRecord)
+
+	return ok && !stringRecord.Expired()
 }

@@ -5,40 +5,39 @@ import (
 )
 
 func (s *MemoryStorage) Set(key string, value domain.StringRecord) error {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.Lock()
-	defer ssh.mu.Unlock()
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
-
-	if _, ok := lsh.data[key]; ok {
-		return domain.ErrWrongType
+	if record, ok := sh.data[key]; ok {
+		if _, isString := record.(domain.StringRecord); !isString {
+			return domain.ErrWrongType
+		}
 	}
 
-	ssh.data[key] = value
+	sh.data[key] = value
 
 	return nil
 }
 
 func (s *MemoryStorage) Get(key string) (domain.StringRecord, error) {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.RLock()
-	defer ssh.mu.RUnlock()
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
+	record, ok := sh.data[key]
+	if !ok {
+		return domain.StringRecord{}, domain.ErrNotFound
+	}
 
-	if _, ok := lsh.data[key]; ok {
+	value, ok := record.(domain.StringRecord)
+	if !ok {
 		return domain.StringRecord{}, domain.ErrWrongType
 	}
 
-	value, ok := ssh.data[key]
-	if !ok || value.Expired() {
+	if value.Expired() {
 		return domain.StringRecord{}, domain.ErrNotFound
 	}
 
@@ -46,24 +45,21 @@ func (s *MemoryStorage) Get(key string) (domain.StringRecord, error) {
 }
 
 func (s *MemoryStorage) Delete(key string) error {
-	ssh := s.strings.getShard(key)
-	lsh := s.lists.getShard(key)
+	sh := s.shards.getShard(key)
 
-	ssh.mu.Lock()
-	defer ssh.mu.Unlock()
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
 
-	lsh.mu.RLock()
-	defer lsh.mu.RUnlock()
-
-	if _, ok := lsh.data[key]; ok {
-		return domain.ErrWrongType
-	}
-
-	if _, ok := ssh.data[key]; !ok {
+	record, ok := sh.data[key]
+	if !ok {
 		return domain.ErrNotFound
 	}
 
-	delete(ssh.data, key)
+	if _, isString := record.(domain.StringRecord); !isString {
+		return domain.ErrWrongType
+	}
+
+	delete(sh.data, key)
 
 	return nil
 }
