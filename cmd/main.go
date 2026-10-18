@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,7 +12,9 @@ import (
 	"github.com/dyingvoid/cachy/internal/config"
 	core_serializer "github.com/dyingvoid/cachy/internal/core/serializer"
 	"github.com/dyingvoid/cachy/internal/features"
+	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 	infrastructure_storage "github.com/dyingvoid/cachy/internal/infrastructure/storage"
+	transport_tcp_client "github.com/dyingvoid/cachy/internal/transport/tcp/client"
 	transport_tcp_server "github.com/dyingvoid/cachy/internal/transport/tcp/server"
 )
 
@@ -46,6 +49,22 @@ func main() {
 
 	h := features.NewProtocolHandler(parser, storage, replicationHandler)
 
+	if appCfg.Role == "slave" {
+		replicaClient, err := handshakeReplication(
+			ctx, *appCfg.ReplicaOf, serverConfig.Port,
+		)
+		if err != nil {
+			panic(err)
+		}
+		defer replicaClient.Close()
+
+		log.Info(
+			"replication handshake completed",
+			slog.String("master", *appCfg.ReplicaOf),
+			slog.Int("listening_port", serverConfig.Port),
+		)
+	}
+
 	server := transport_tcp_server.NewServer(
 		serverConfig, log, h, serializer,
 	)
@@ -53,4 +72,31 @@ func main() {
 	if err := server.Start(ctx); err != nil && err != context.Canceled {
 		panic(err)
 	}
+}
+
+func handshakeReplication(
+	ctx context.Context,
+	address string,
+	port int,
+) (*transport_tcp_client.Client, error) {
+	cfg, err := transport_tcp_client.NewConfig(address, port)
+	if err != nil {
+		return nil, fmt.Errorf("replica client config: %w", err)
+	}
+
+	client, err := transport_tcp_client.NewClient(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("connect replica: %w", err)
+	}
+
+	replicationClient := features_replication.NewReplicationClient(
+		features_replication.NewTextCodec(),
+		client,
+	)
+	if err := replicationClient.Handshake(ctx); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("handshake replica: %w", err)
+	}
+
+	return client, nil
 }

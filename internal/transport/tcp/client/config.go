@@ -4,14 +4,41 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Address      string
-	Port         int
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	Address      string        `ignored:"true"`
+	Port         int           `ignored:"true"`
+	DialTimeout  time.Duration `envconfig:"DIAL_TIMEOUT" default:"5s"`
+	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT" default:"5s"`
+	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT" default:"5s"`
+}
+
+func NewConfig(address string, port int) (Config, error) {
+	cfg := Config{
+		Address: address,
+		Port:    port,
+	}
+
+	if err := envconfig.Process("REPLICA", &cfg); err != nil {
+		return Config{}, fmt.Errorf("replica: process config: %w", err)
+	}
+	if err := cfg.validate(); err != nil {
+		return Config{}, fmt.Errorf("replica: validate config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func NewConfigMust(address string, port int) Config {
+	cfg, err := NewConfig(address, port)
+	if err != nil {
+		panic(err)
+	}
+
+	return cfg
 }
 
 func (c Config) validate() error {
