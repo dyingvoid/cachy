@@ -31,7 +31,7 @@ func parsePsyncArgs(args []string) (PsyncCmd, error) {
 
 func (h *ProtocolHandler) executePsync(cmd PsyncCmd) (StringResult, error) {
 	return StringResult(fmt.Sprintf(
-		"+FULLRESYNC %s %d",
+		"FULLRESYNC %s %d",
 		core_state.ReplicationID(),
 		core_state.ReplicationOffset(),
 	)), nil

@@ -3,8 +3,6 @@ package core_replication
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 )
 
 type ReplicationClient struct {
@@ -20,60 +18,57 @@ func NewReplicationClient(codec Codec, transport ClientTransport) *ReplicationCl
 }
 
 func (c *ReplicationClient) Handshake(ctx context.Context) error {
-	resp, err := c.sendMsg(ctx, Message{Command: "PING"})
+	resp, err := c.send(ctx, PingMessage{})
 	if err != nil {
 		return err
 	}
-	if resp != "PONG" {
-		return fmt.Errorf("unexpected PING response: %+v", resp)
+	if _, ok := resp.(PongResponse); !ok {
+		return fmt.Errorf("unexpected PING response: %T", resp)
 	}
 
-	for _, args := range [][]string{
-		{"listening-port", strconv.Itoa(c.transport.Port())},
-		{"capa", "psync2"},
+	port := c.transport.Port()
+	capa := "psync2"
+	for _, msg := range []Message{
+		ReplConfMessage{Port: &port},
+		ReplConfMessage{Capa: &capa},
 	} {
-		resp, err := c.sendMsg(ctx, Message{
-			Command: "REPLCONF",
-			Args:    args,
-		})
+		resp, err := c.send(ctx, msg)
 		if err != nil {
 			return err
 		}
-		if resp != "+OK" {
-			return fmt.Errorf("unexpected REPLCONF response: %+v", resp)
+		if _, ok := resp.(OKResponse); !ok {
+			return fmt.Errorf("unexpected REPLCONF response: %T", resp)
 		}
 	}
 
-	resp, err = c.sendMsg(ctx, Message{
-		Command: "PSYNC",
-		Args:    []string{"?", "-1"},
+	resp, err = c.send(ctx, PsyncMessage{
+		ReplicationID: "?",
+		Offset:        -1,
 	})
 	if err != nil {
 		return err
 	}
-
-	fields := strings.Fields(resp)
-	if len(fields) != 3 || fields[0] != "FULLRESYNC" {
-		return fmt.Errorf("unexpected psync response: %+v", resp)
+	if _, ok := resp.(PsyncResponse); !ok {
+		return fmt.Errorf("unexpected PSYNC response: %T", resp)
 	}
+
 	return nil
 }
 
-func (c *ReplicationClient) sendMsg(ctx context.Context, msg Message) (string, error) {
-	var zero string
+func (c *ReplicationClient) send(ctx context.Context, msg Message) (Response, error) {
 	payload, err := c.codec.Encode(msg)
 	if err != nil {
-		return zero, fmt.Errorf("encode message: %w", err)
+		return nil, fmt.Errorf("encode message: %w", err)
 	}
 
 	raw, err := c.transport.Send(ctx, payload)
 	if err != nil {
-		return zero, fmt.Errorf("send message: %w", err)
+		return nil, fmt.Errorf("send message: %w", err)
 	}
 
 	resp, err := c.codec.Decode(raw)
 	if err != nil {
-		return zero, fmt.Errorf("decode response: %w", err)
+		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
 	return resp, nil

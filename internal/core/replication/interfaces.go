@@ -4,8 +4,7 @@ import "context"
 
 type Codec interface {
 	Encode(msg Message) ([]byte, error)
-	Decode([]byte) (string, error)
-	DecodePsync([]byte) (PsyncResponse, error)
+	Decode(raw []byte) (Response, error)
 }
 
 type ClientTransport interface {

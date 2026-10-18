@@ -6,8 +6,3 @@ const (
 	ConnModeDefault ConnMode = iota
 	ConnModeReplicationStreaming
 )
-
-type PsyncResponse struct {
-	ReplID string
-	Offset int64
-}

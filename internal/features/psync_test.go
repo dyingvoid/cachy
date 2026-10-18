@@ -52,7 +52,7 @@ func TestExecutePsync(t *testing.T) {
 		t.Fatalf("executePsync returned unexpected error: %v", err)
 	}
 
-	want := StringResult("+FULLRESYNC " + core_state.ReplicationID() + " 0")
+	want := StringResult("FULLRESYNC " + core_state.ReplicationID() + " 0")
 	if res != want {
 		t.Fatalf("executePsync = %q, want %q", res, want)
 	}

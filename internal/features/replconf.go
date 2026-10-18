@@ -30,5 +30,5 @@ func parseReplConfArgs(args []string) (ReplConfCmd, error) {
 }
 
 func (h *ProtocolHandler) executeRepl(cmd ReplConfCmd) (Result, error) {
-	return StringResult("+OK"), nil
+	return StringResult("OK"), nil
 }
