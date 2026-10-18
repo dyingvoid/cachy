@@ -1,6 +1,6 @@
 package features_replication
 
-import "context"
+import "io"
 
 type Codec interface {
 	Encode(msg Message) ([]byte, error)
@@ -8,7 +8,7 @@ type Codec interface {
 }
 
 type ClientTransport interface {
-	Send(ctx context.Context, payload []byte) ([]byte, error)
+	io.ReadWriter
 	Port() int
 	Close() error
 }

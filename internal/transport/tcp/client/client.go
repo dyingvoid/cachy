@@ -1,7 +1,6 @@
 package transport_tcp_client
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -18,11 +17,11 @@ var (
 )
 
 type Client struct {
-	cfg    Config
-	conn   net.Conn
-	reader *bufio.Reader
+	cfg  Config
+	conn net.Conn
 
-	sendMu    sync.Mutex
+	readMu    sync.Mutex
+	writeMu   sync.Mutex
 	closeOnce sync.Once
 	closeErr  error
 	closed    atomic.Bool
@@ -40,49 +39,56 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		cfg:    cfg,
-		conn:   conn,
-		reader: bufio.NewReader(conn),
+		cfg:  cfg,
+		conn: conn,
 	}, nil
 }
 
-func (c *Client) Send(ctx context.Context, payload []byte) ([]byte, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("send: %w", err)
-	}
-	if len(payload) == 0 {
-		return nil, fmt.Errorf("send: %w", ErrEmptyPayload)
-	}
-
-	c.sendMu.Lock()
-	defer c.sendMu.Unlock()
+func (c *Client) Read(p []byte) (int, error) {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
 
 	if c.closed.Load() {
-		return nil, fmt.Errorf("send: %w", ErrClosed)
+		return 0, fmt.Errorf("read: %w", ErrClosed)
 	}
 
-	if err := c.conn.SetWriteDeadline(deadline(ctx, c.cfg.WriteTimeout)); err != nil {
-		return nil, fmt.Errorf("set write deadline: %w", err)
+	if err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.ReadTimeout)); err != nil {
+		return 0, fmt.Errorf("set read deadline: %w", err)
 	}
 
-	n, err := c.conn.Write(payload)
+	n, err := c.conn.Read(p)
 	if err != nil {
-		return nil, fmt.Errorf("write payload: %w", err)
-	}
-	if n != len(payload) {
-		return nil, fmt.Errorf("write payload: %w", io.ErrShortWrite)
+		return n, fmt.Errorf("read response: %w", err)
 	}
 
-	if err := c.conn.SetReadDeadline(deadline(ctx, c.cfg.ReadTimeout)); err != nil {
-		return nil, fmt.Errorf("set read deadline: %w", err)
+	return n, nil
+}
+
+func (c *Client) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, fmt.Errorf("write: %w", ErrEmptyPayload)
 	}
 
-	raw, err := c.reader.ReadBytes('\n')
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+
+	if c.closed.Load() {
+		return 0, fmt.Errorf("write: %w", ErrClosed)
+	}
+
+	if err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout)); err != nil {
+		return 0, fmt.Errorf("set write deadline: %w", err)
+	}
+
+	n, err := c.conn.Write(p)
 	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+		return n, fmt.Errorf("write payload: %w", err)
+	}
+	if n != len(p) {
+		return n, fmt.Errorf("write payload: %w", io.ErrShortWrite)
 	}
 
-	return raw, nil
+	return n, nil
 }
 
 func (c *Client) Port() int {
@@ -101,13 +107,4 @@ func (c *Client) Close() error {
 	}
 
 	return nil
-}
-
-func deadline(ctx context.Context, timeout time.Duration) time.Time {
-	limit := time.Now().Add(timeout)
-	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(limit) {
-		return ctxDeadline
-	}
-
-	return limit
 }

@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
 )
 
-func TestClientSend(t *testing.T) {
+func TestClientReadWrite(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen returned unexpected error: %v", err)
@@ -53,12 +54,18 @@ func TestClientSend(t *testing.T) {
 	}
 	defer client.Close()
 
-	raw, err := client.Send(context.Background(), []byte("PING\n"))
-	if err != nil {
-		t.Fatalf("Send returned unexpected error: %v", err)
+	if n, err := client.Write([]byte("PING\n")); err != nil {
+		t.Fatalf("Write returned unexpected error: %v", err)
+	} else if n != len("PING\n") {
+		t.Fatalf("Write = %d, want %d", n, len("PING\n"))
+	}
+
+	raw := make([]byte, 4)
+	if _, err := io.ReadFull(client, raw); err != nil {
+		t.Fatalf("Read returned unexpected error: %v", err)
 	}
 	if want := "OK\r\n"; string(raw) != want {
-		t.Fatalf("Send = %q, want %q", raw, want)
+		t.Fatalf("Read = %q, want %q", raw, want)
 	}
 
 	select {
@@ -81,7 +88,7 @@ func TestClientSend(t *testing.T) {
 	}
 }
 
-func TestClientSendAfterClose(t *testing.T) {
+func TestClientWriteAfterClose(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen returned unexpected error: %v", err)
@@ -105,8 +112,12 @@ func TestClientSendAfterClose(t *testing.T) {
 		t.Fatalf("Close returned unexpected error: %v", err)
 	}
 
-	if _, err := client.Send(context.Background(), []byte("PING\n")); !errors.Is(err, ErrClosed) {
-		t.Fatalf("Send error = %v, want %v", err, ErrClosed)
+	if _, err := client.Write([]byte("PING\n")); !errors.Is(err, ErrClosed) {
+		t.Fatalf("Write error = %v, want %v", err, ErrClosed)
+	}
+
+	if _, err := client.Read(make([]byte, 4)); !errors.Is(err, ErrClosed) {
+		t.Fatalf("Read error = %v, want %v", err, ErrClosed)
 	}
 }
 

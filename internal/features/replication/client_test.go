@@ -3,6 +3,7 @@ package features_replication
 import (
 	"context"
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 )
@@ -37,11 +38,26 @@ type fakeTransport struct {
 	err  error
 }
 
-func (f *fakeTransport) Send(context.Context, []byte) ([]byte, error) {
+func (f *fakeTransport) Read(p []byte) (int, error) {
 	if f.err != nil {
-		return nil, f.err
+		return 0, f.err
 	}
-	return f.raw, nil
+	if len(f.raw) == 0 {
+		return 0, io.EOF
+	}
+
+	n := copy(p, f.raw)
+	f.raw = f.raw[n:]
+
+	return n, nil
+}
+
+func (f *fakeTransport) Write(p []byte) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+
+	return len(p), nil
 }
 
 func (f *fakeTransport) Port() int {
@@ -61,7 +77,10 @@ func TestReplicationClientHandshake(t *testing.T) {
 			PsyncResponse{ReplID: "abc123", Offset: 0},
 		},
 	}
-	transport := &fakeTransport{port: 8082}
+	transport := &fakeTransport{
+		port: 8082,
+		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n"),
+	}
 	client := NewReplicationClient(codec, transport)
 
 	if err := client.Handshake(context.Background()); err != nil {
@@ -91,17 +110,17 @@ func TestReplicationClientHandshakeErrors(t *testing.T) {
 		{
 			name:      "unexpected ping response",
 			responses: []Response{OKResponse{}},
-			transport: &fakeTransport{port: 8082},
+			transport: &fakeTransport{port: 8082, raw: []byte("OK\n")},
 		},
 		{
 			name:      "unexpected replconf response",
 			responses: []Response{PongResponse{}, PongResponse{}},
-			transport: &fakeTransport{port: 8082},
+			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nPONG\n")},
 		},
 		{
 			name:      "unexpected psync response",
 			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, OKResponse{}},
-			transport: &fakeTransport{port: 8082},
+			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nOK\n")},
 		},
 		{
 			name:      "transport error",
@@ -110,7 +129,7 @@ func TestReplicationClientHandshakeErrors(t *testing.T) {
 		{
 			name:      "decode error",
 			responses: []Response{PongResponse{}},
-			transport: &fakeTransport{port: 8082},
+			transport: &fakeTransport{port: 8082, raw: []byte("PONG\n")},
 			codecErr:  errors.New("decode failed"),
 		},
 	}
