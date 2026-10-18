@@ -42,6 +42,8 @@ func (p *ProtocolParser) Parse(in string) (Command, error) {
 		return parseInfoArgs(args)
 	case "REPLCONF":
 		return parseReplConfArgs(args)
+	case "PSYNC":
+		return parsePsyncArgs(args)
 	default:
 		return nil, fmt.Errorf("can't parse %s: %w", name, ErrUnknownCommand)
 	}

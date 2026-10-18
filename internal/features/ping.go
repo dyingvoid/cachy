@@ -11,3 +11,7 @@ func parsePingArgs(args []string) (PingCmd, error) {
 
 	return PingCmd{}, nil
 }
+
+func (h *ProtocolHandler) executePing(cmd PingCmd) (StringResult, error) {
+	return StringResult("PONG"), nil
+}

@@ -28,3 +28,7 @@ func parseReplConfArgs(args []string) (ReplConfCmd, error) {
 		return ReplConfCmd{}, ErrInvalidArguments
 	}
 }
+
+func (h *ProtocolHandler) executeRepl(cmd ReplConfCmd) (Result, error) {
+	return StringResult("+OK"), nil
+}

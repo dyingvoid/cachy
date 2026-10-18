@@ -43,7 +43,7 @@ func (h *ProtocolHandler) Handle(
 func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) (Result, error) {
 	switch cmd := cmd.(type) {
 	case PingCmd:
-		return StringResult("PONG"), nil
+		return h.executePing(cmd)
 	case SetCmd:
 		return h.executeSet(cmd)
 	case GetCmd:
@@ -61,7 +61,9 @@ func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) (Result, err
 	case InfoCmd:
 		return h.executeInfo(cmd)
 	case ReplConfCmd:
-		return StringResult("+OK"), nil
+		return h.executeRepl(cmd)
+	case PsyncCmd:
+		return h.executePsync(cmd)
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
 	}
