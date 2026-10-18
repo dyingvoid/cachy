@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 )
 
 type ReplicationClient struct {
@@ -54,6 +56,46 @@ func (c *ReplicationClient) Handshake(ctx context.Context) error {
 	}
 	if _, ok := resp.(PsyncResponse); !ok {
 		return fmt.Errorf("unexpected PSYNC response: %T", resp)
+	}
+
+	if err := c.receiveFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *ReplicationClient) receiveFile() error {
+	header, err := c.reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("read file header: %w", err)
+	}
+
+	header = strings.TrimSpace(header)
+	if !strings.HasPrefix(header, "$") {
+		return fmt.Errorf(
+			"read file header %q: %w",
+			header,
+			ErrUnexpectedResponse,
+		)
+	}
+
+	size, err := strconv.Atoi(strings.TrimPrefix(header, "$"))
+	if err != nil || size < 0 {
+		return fmt.Errorf(
+			"parse file length %q: %w",
+			header,
+			ErrUnexpectedResponse,
+		)
+	}
+
+	content := make([]byte, size)
+	if _, err := io.ReadFull(c.reader, content); err != nil {
+		return fmt.Errorf("read file content: %w", err)
+	}
+
+	if _, err := c.reader.ReadByte(); err != nil {
+		return fmt.Errorf("read file terminator: %w", err)
 	}
 
 	return nil

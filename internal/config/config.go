@@ -49,9 +49,6 @@ func New() (Config, error) {
 func (c Config) validate() error {
 	switch c.Role {
 	case "master":
-		if c.ReplicaOf != nil {
-			return errors.New("replica_of must not be set for master role")
-		}
 	case "slave":
 		if c.ReplicaOf == nil || *c.ReplicaOf == "" {
 			return errors.New("replica_of is required for slave role")

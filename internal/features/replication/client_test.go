@@ -79,7 +79,7 @@ func TestReplicationClientHandshake(t *testing.T) {
 	}
 	transport := &fakeTransport{
 		port: 8082,
-		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n"),
+		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$0\r\n\n"),
 	}
 	client := NewReplicationClient(codec, transport)
 
@@ -97,6 +97,26 @@ func TestReplicationClientHandshake(t *testing.T) {
 	}
 	if !reflect.DeepEqual(codec.encoded, want) {
 		t.Fatalf("Handshake encoded %+v, want %+v", codec.encoded, want)
+	}
+}
+
+func TestReplicationClientHandshakeWithFile(t *testing.T) {
+	codec := &fakeCodec{
+		responses: []Response{
+			PongResponse{},
+			OKResponse{},
+			OKResponse{},
+			PsyncResponse{ReplID: "abc123", Offset: 0},
+		},
+	}
+	transport := &fakeTransport{
+		port: 8082,
+		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$3\r\nabc\n"),
+	}
+	client := NewReplicationClient(codec, transport)
+
+	if err := client.Handshake(context.Background()); err != nil {
+		t.Fatalf("Handshake returned unexpected error: %v", err)
 	}
 }
 
@@ -121,6 +141,16 @@ func TestReplicationClientHandshakeErrors(t *testing.T) {
 			name:      "unexpected psync response",
 			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, OKResponse{}},
 			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nOK\n")},
+		},
+		{
+			name:      "unexpected file header",
+			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, PsyncResponse{ReplID: "abc123", Offset: 0}},
+			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\nOK\n")},
+		},
+		{
+			name:      "invalid file length",
+			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, PsyncResponse{ReplID: "abc123", Offset: 0}},
+			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$nope\r\n")},
 		},
 		{
 			name:      "transport error",
