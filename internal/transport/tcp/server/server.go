@@ -11,6 +11,7 @@ import (
 	"time"
 
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
+	"github.com/dyingvoid/cachy/internal/features"
 )
 
 type Server struct {
@@ -20,12 +21,13 @@ type Server struct {
 	ln net.Listener
 	wg sync.WaitGroup
 
-	handler Handler
+	handler    Handler
+	serializer features.Serializer
 }
 
 type Handler interface {
 	Handle(ctx context.Context, request []byte) (
-		response []byte,
+		results []features.Result,
 		err error,
 	)
 }
@@ -34,11 +36,13 @@ func NewServer(
 	cfg ServerConfig,
 	log *slog.Logger,
 	handler Handler,
+	serializer features.Serializer,
 ) *Server {
 	return &Server{
-		cfg:     cfg,
-		log:     log,
-		handler: handler,
+		cfg:        cfg,
+		log:        log,
+		handler:    handler,
+		serializer: serializer,
 	}
 }
 
@@ -101,14 +105,16 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
-		response, err := s.handler.Handle(ctx, scanner.Bytes())
+		results, err := s.handler.Handle(ctx, scanner.Bytes())
 		if err != nil {
 			log.Error("handler request", slog.Any("error", err))
 			return
 		}
 
-		if err := s.write(ctx, conn, string(response)); err != nil {
-			return
+		for _, result := range results {
+			if err := s.write(ctx, conn, s.serializer.Serialize(result)); err != nil {
+				return
+			}
 		}
 	}
 

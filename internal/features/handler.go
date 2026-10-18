@@ -26,45 +26,57 @@ func NewProtocolHandler(
 func (h *ProtocolHandler) Handle(
 	ctx context.Context,
 	request []byte,
-) ([]byte, error) {
+) ([]Result, error) {
 	cmd, err := h.parser.Parse(string(request))
 	if err != nil {
-		return []byte(h.serializer.SerializeError(err)), nil
+		return errorResults(h.serializer.SerializeError(err)), nil
 	}
 
-	result, err := h.execute(ctx, cmd)
+	results, err := h.execute(ctx, cmd)
 	if err != nil {
-		return []byte(h.serializer.SerializeError(err)), nil
+		return errorResults(h.serializer.SerializeError(err)), nil
 	}
 
-	return []byte(h.serializer.Serialize(result)), nil
+	return results, nil
 }
 
-func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) (Result, error) {
+func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) ([]Result, error) {
 	switch cmd := cmd.(type) {
 	case PingCmd:
-		return h.executePing(cmd)
+		return singleResult(h.executePing(cmd))
 	case SetCmd:
-		return h.executeSet(cmd)
+		return singleResult(h.executeSet(cmd))
 	case GetCmd:
-		return h.executeGet(cmd)
+		return singleResult(h.executeGet(cmd))
 	case RPushCmd:
-		return h.executeRPush(cmd)
+		return singleResult(h.executeRPush(cmd))
 	case LPushCmd:
-		return h.executeLPush(cmd)
+		return singleResult(h.executeLPush(cmd))
 	case LRangeCmd:
-		return h.executeLRange(cmd)
+		return singleResult(h.executeLRange(cmd))
 	case LLenCmd:
-		return h.executeLLen(cmd)
+		return singleResult(h.executeLLen(cmd))
 	case LPopCmd:
-		return h.executeLPop(cmd)
+		return singleResult(h.executeLPop(cmd))
 	case InfoCmd:
-		return h.executeInfo(cmd)
+		return singleResult(h.executeInfo(cmd))
 	case ReplConfCmd:
-		return h.executeRepl(cmd)
+		return singleResult(h.executeRepl(cmd))
 	case PsyncCmd:
 		return h.executePsync(cmd)
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
 	}
+}
+
+func singleResult(result Result, err error) ([]Result, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	return []Result{result}, nil
+}
+
+func errorResults(message string) []Result {
+	return []Result{StringResult(message)}
 }

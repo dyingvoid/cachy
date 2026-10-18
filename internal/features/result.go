@@ -10,10 +10,6 @@ type StringResult string
 
 type ListResult []string
 
-func (ListResult) isResult() {}
-
-func (StringResult) isResult() {}
-
 type MapResult interface {
 	Result
 	ToMap() map[string]string
@@ -51,4 +47,15 @@ func (i Info) ToMap() map[string]string {
 	return m
 }
 
-func (i Info) isResult() {}
+type FileResult struct {
+	Len     int
+	Content []byte
+}
+
+func (ListResult) isResult() {}
+
+func (StringResult) isResult() {}
+
+func (Info) isResult() {}
+
+func (FileResult) isResult() {}

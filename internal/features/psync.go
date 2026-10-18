@@ -29,10 +29,13 @@ func parsePsyncArgs(args []string) (PsyncCmd, error) {
 	}, nil
 }
 
-func (h *ProtocolHandler) executePsync(cmd PsyncCmd) (StringResult, error) {
-	return StringResult(fmt.Sprintf(
-		"FULLRESYNC %s %d",
-		core_state.ReplicationID(),
-		core_state.ReplicationOffset(),
-	)), nil
+func (h *ProtocolHandler) executePsync(cmd PsyncCmd) ([]Result, error) {
+	return []Result{
+		StringResult(fmt.Sprintf(
+			"FULLRESYNC %s %d",
+			core_state.ReplicationID(),
+			core_state.ReplicationOffset(),
+		)),
+		FileResult{Len: 0, Content: []byte{}},
+	}, nil
 }

@@ -22,6 +22,8 @@ func (s *TextSerializer) Serialize(res features.Result) string {
 		return strings.Join(res, "\n")
 	case features.MapResult:
 		return mapToString(res)
+	case features.FileResult:
+		return fmt.Sprintf("$%d\r\n%s", res.Len, res.Content)
 	default:
 		panic(fmt.Sprintf("text serializer: unsupported result type %T, value: %#v", res, res))
 	}

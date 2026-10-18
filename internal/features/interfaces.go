@@ -11,7 +11,7 @@ type Parser interface {
 }
 
 type Executor interface {
-	Execute(context.Context, Command) (Result, error)
+	Execute(context.Context, Command) ([]Result, error)
 }
 
 type Serializer interface {

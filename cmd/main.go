@@ -44,7 +44,7 @@ func main() {
 	h := features.NewProtocolHandler(parser, storage, serializer)
 
 	server := transport_tcp_server.NewServer(
-		serverConfig, log, h,
+		serverConfig, log, h, serializer,
 	)
 
 	if err := server.Start(ctx); err != nil && err != context.Canceled {
