@@ -41,7 +41,7 @@ func main() {
 	parser := features.NewProtocolParser()
 	serializer := core_serializer.NewTextSerializer()
 
-	h := features.NewProtocolHandler(parser, storage, serializer)
+	h := features.NewProtocolHandler(parser, storage)
 
 	server := transport_tcp_server.NewServer(
 		serverConfig, log, h, serializer,

@@ -107,8 +107,10 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
 		results, err := s.handler.Handle(ctx, scanner.Bytes())
 		if err != nil {
-			log.Error("handler request", slog.Any("error", err))
-			return
+			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
+				return
+			}
+			continue
 		}
 
 		for _, result := range results {

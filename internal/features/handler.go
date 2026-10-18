@@ -6,20 +6,17 @@ import (
 )
 
 type ProtocolHandler struct {
-	parser     Parser
-	storage    Storage
-	serializer Serializer
+	parser  Parser
+	storage Storage
 }
 
 func NewProtocolHandler(
 	parser Parser,
 	storage Storage,
-	serializer Serializer,
 ) *ProtocolHandler {
 	return &ProtocolHandler{
-		parser:     parser,
-		storage:    storage,
-		serializer: serializer,
+		parser:  parser,
+		storage: storage,
 	}
 }
 
@@ -29,15 +26,10 @@ func (h *ProtocolHandler) Handle(
 ) ([]Result, error) {
 	cmd, err := h.parser.Parse(string(request))
 	if err != nil {
-		return errorResults(h.serializer.SerializeError(err)), nil
+		return nil, err
 	}
 
-	results, err := h.execute(ctx, cmd)
-	if err != nil {
-		return errorResults(h.serializer.SerializeError(err)), nil
-	}
-
-	return results, nil
+	return h.execute(ctx, cmd)
 }
 
 func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) ([]Result, error) {
@@ -75,8 +67,4 @@ func singleResult(result Result, err error) ([]Result, error) {
 	}
 
 	return []Result{result}, nil
-}
-
-func errorResults(message string) []Result {
-	return []Result{StringResult(message)}
 }
