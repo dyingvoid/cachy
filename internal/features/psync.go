@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	core_state "github.com/dyingvoid/cachy/internal/core/state"
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
 type PsyncCmd struct {
@@ -29,7 +30,17 @@ func parsePsyncArgs(args []string) (PsyncCmd, error) {
 	}, nil
 }
 
-func (h *ProtocolHandler) executePsync(cmd PsyncCmd) ([]Result, error) {
+func (h *ProtocolHandler) executePsync(
+	state *features_conn.State,
+	cmd PsyncCmd,
+) ([]Result, error) {
+	state.Replication.ReplicationID = cmd.ReplicationID
+	state.Replication.Offset = cmd.Offset
+
+	if !state.TryStartReplication() {
+		return nil, ErrReplicationStateIncomplete
+	}
+
 	return []Result{
 		StringResult(fmt.Sprintf(
 			"FULLRESYNC %s %d",
@@ -37,5 +48,6 @@ func (h *ProtocolHandler) executePsync(cmd PsyncCmd) ([]Result, error) {
 			core_state.ReplicationOffset(),
 		)),
 		FileResult{Len: 0, Content: []byte{}},
+		StreamingResult{},
 	}, nil
 }

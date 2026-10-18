@@ -1,4 +1,4 @@
-package core_replication
+package features_replication
 
 import "strconv"
 

@@ -1,6 +1,10 @@
 package features
 
-import "strconv"
+import (
+	"strconv"
+
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+)
 
 type ReplConfCmd struct {
 	ListeningPort *int
@@ -29,6 +33,16 @@ func parseReplConfArgs(args []string) (ReplConfCmd, error) {
 	}
 }
 
-func (h *ProtocolHandler) executeRepl(cmd ReplConfCmd) (Result, error) {
+func (h *ProtocolHandler) executeRepl(
+	state *features_conn.State,
+	cmd ReplConfCmd,
+) (Result, error) {
+	if cmd.ListeningPort != nil {
+		state.Replication.ListeningPort = cmd.ListeningPort
+	}
+	if cmd.Capa != nil {
+		state.Replication.Capa = cmd.Capa
+	}
+
 	return StringResult("OK"), nil
 }

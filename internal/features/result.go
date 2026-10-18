@@ -52,6 +52,8 @@ type FileResult struct {
 	Content []byte
 }
 
+type StreamingResult struct{}
+
 func (ListResult) isResult() {}
 
 func (StringResult) isResult() {}
@@ -59,3 +61,5 @@ func (StringResult) isResult() {}
 func (Info) isResult() {}
 
 func (FileResult) isResult() {}
+
+func (StreamingResult) isResult() {}

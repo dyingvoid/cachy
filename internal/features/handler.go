@@ -3,6 +3,8 @@ package features
 import (
 	"context"
 	"fmt"
+
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
 type ProtocolHandler struct {
@@ -22,6 +24,7 @@ func NewProtocolHandler(
 
 func (h *ProtocolHandler) Handle(
 	ctx context.Context,
+	state *features_conn.State,
 	request []byte,
 ) ([]Result, error) {
 	cmd, err := h.parser.Parse(string(request))
@@ -29,10 +32,14 @@ func (h *ProtocolHandler) Handle(
 		return nil, err
 	}
 
-	return h.execute(ctx, cmd)
+	return h.execute(ctx, state, cmd)
 }
 
-func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) ([]Result, error) {
+func (h *ProtocolHandler) execute(
+	ctx context.Context,
+	state *features_conn.State,
+	cmd Command,
+) ([]Result, error) {
 	switch cmd := cmd.(type) {
 	case PingCmd:
 		return singleResult(h.executePing(cmd))
@@ -53,9 +60,9 @@ func (h *ProtocolHandler) execute(ctx context.Context, cmd Command) ([]Result, e
 	case InfoCmd:
 		return singleResult(h.executeInfo(cmd))
 	case ReplConfCmd:
-		return singleResult(h.executeRepl(cmd))
+		return singleResult(h.executeRepl(state, cmd))
 	case PsyncCmd:
-		return h.executePsync(cmd)
+		return h.executePsync(state, cmd)
 	default:
 		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
 	}

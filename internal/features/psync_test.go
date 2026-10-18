@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	core_state "github.com/dyingvoid/cachy/internal/core/state"
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 )
 
 func TestParser_Parse_Psync(t *testing.T) {
@@ -46,8 +48,16 @@ func TestParser_Parse_PsyncErrors(t *testing.T) {
 
 func TestExecutePsync(t *testing.T) {
 	h := &ProtocolHandler{}
+	port := 8081
+	capa := "psync2"
+	state := &features_conn.State{
+		Replication: features_replication.State{
+			ListeningPort: &port,
+			Capa:          &capa,
+		},
+	}
 
-	res, err := h.executePsync(PsyncCmd{ReplicationID: "?", Offset: -1})
+	res, err := h.executePsync(state, PsyncCmd{ReplicationID: "?", Offset: -1})
 	if err != nil {
 		t.Fatalf("executePsync returned unexpected error: %v", err)
 	}
@@ -55,8 +65,12 @@ func TestExecutePsync(t *testing.T) {
 	want := []Result{
 		StringResult("FULLRESYNC " + core_state.ReplicationID() + " 0"),
 		FileResult{Len: 0, Content: []byte{}},
+		StreamingResult{},
 	}
 	if !reflect.DeepEqual(res, want) {
 		t.Fatalf("executePsync = %#v, want %#v", res, want)
+	}
+	if state.Mode != features_conn.ModeReplicationStreaming {
+		t.Fatalf("state mode = %v, want %v", state.Mode, features_conn.ModeReplicationStreaming)
 	}
 }

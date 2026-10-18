@@ -12,6 +12,7 @@ import (
 
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
 	"github.com/dyingvoid/cachy/internal/features"
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
 type Server struct {
@@ -26,7 +27,7 @@ type Server struct {
 }
 
 type Handler interface {
-	Handle(ctx context.Context, request []byte) (
+	Handle(ctx context.Context, state *features_conn.State, request []byte) (
 		results []features.Result,
 		err error,
 	)
@@ -102,10 +103,11 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 	ctx = core_logger.ToContext(ctx, log)
 
+	state := features_conn.NewState()
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
-		results, err := s.handler.Handle(ctx, scanner.Bytes())
+		results, err := s.handler.Handle(ctx, state, scanner.Bytes())
 		if err != nil {
 			if err := s.write(ctx, conn, s.serializer.SerializeError(err)); err != nil {
 				return
@@ -114,6 +116,9 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		}
 
 		for _, result := range results {
+			if _, ok := result.(features.StreamingResult); ok {
+				panic("TODO")
+			}
 			if err := s.write(ctx, conn, s.serializer.Serialize(result)); err != nil {
 				return
 			}
