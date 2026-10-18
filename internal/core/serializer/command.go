@@ -9,7 +9,7 @@ import (
 	"github.com/dyingvoid/cachy/internal/features"
 )
 
-func (s *TextSerializer) SerializeCommand(cmd features.ReplicationCommand) string {
+func (s *TextSerializer) SerializeCommand(cmd features.WriteCommand) string {
 	switch cmd := cmd.(type) {
 	case features.SetCmd:
 		return serializeSet(cmd)

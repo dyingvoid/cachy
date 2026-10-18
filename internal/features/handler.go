@@ -71,7 +71,7 @@ func (h *ProtocolHandler) execute(
 	}
 }
 
-func (h *ProtocolHandler) replicate(cmd ReplicationCommand) {
+func (h *ProtocolHandler) replicate(cmd WriteCommand) {
 	if h.replication == nil {
 		return
 	}

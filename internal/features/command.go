@@ -4,7 +4,7 @@ type Command interface {
 	isCommand()
 }
 
-type ReplicationCommand interface {
+type WriteCommand interface {
 	Command
 }
 

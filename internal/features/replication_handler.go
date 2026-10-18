@@ -10,7 +10,7 @@ type ReplicationHandler struct {
 
 type ReplicationStream struct {
 	handler   *ReplicationHandler
-	commands  chan ReplicationCommand
+	commands  chan WriteCommand
 	done      chan struct{}
 	mu        sync.Mutex
 	closed    bool
@@ -27,7 +27,7 @@ func NewReplicationHandler(capacity int) *ReplicationHandler {
 func (h *ReplicationHandler) Subscribe() *ReplicationStream {
 	stream := &ReplicationStream{
 		handler:  h,
-		commands: make(chan ReplicationCommand, h.capacity),
+		commands: make(chan WriteCommand, h.capacity),
 		done:     make(chan struct{}),
 	}
 
@@ -38,7 +38,7 @@ func (h *ReplicationHandler) Subscribe() *ReplicationStream {
 	return stream
 }
 
-func (h *ReplicationHandler) Publish(cmd ReplicationCommand) {
+func (h *ReplicationHandler) Publish(cmd WriteCommand) {
 	h.mu.RLock()
 	streams := make([]*ReplicationStream, 0, len(h.streams))
 	for stream := range h.streams {
@@ -46,6 +46,7 @@ func (h *ReplicationHandler) Publish(cmd ReplicationCommand) {
 	}
 	h.mu.RUnlock()
 
+	// TODO: writing to slow chan will block everyone else
 	for _, stream := range streams {
 		stream.send(cmd)
 	}
@@ -64,7 +65,7 @@ func (h *ReplicationHandler) unsubscribe(stream *ReplicationStream) {
 	}
 }
 
-func (s *ReplicationStream) Commands() <-chan ReplicationCommand {
+func (s *ReplicationStream) Commands() <-chan WriteCommand {
 	return s.commands
 }
 
@@ -72,7 +73,7 @@ func (s *ReplicationStream) Close() {
 	s.handler.unsubscribe(s)
 }
 
-func (s *ReplicationStream) send(cmd ReplicationCommand) {
+func (s *ReplicationStream) send(cmd WriteCommand) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

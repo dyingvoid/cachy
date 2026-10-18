@@ -46,7 +46,7 @@ func TestTextSerializerSerializeCommand(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		command features.ReplicationCommand
+		command features.WriteCommand
 		want    string
 	}{
 		{
