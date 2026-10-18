@@ -1,4 +1,4 @@
-package core_handler
+package features
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 )
 
 type Parser interface {
-	Parse(in string) (domain.Command, error)
+	Parse(in string) (Command, error)
 }
 
 type Executor interface {
-	Execute(context.Context, domain.Command) (domain.Result, error)
+	Execute(context.Context, Command) (Result, error)
 }
 
 type Serializer interface {
-	Serialize(domain.Result) string
+	Serialize(Result) string
 	SerializeError(error) string
 }
 

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dyingvoid/cachy/internal/domain"
+	"github.com/dyingvoid/cachy/internal/features"
 )
 
 type TextSerializer struct{}
@@ -14,13 +14,13 @@ func NewTextSerializer() *TextSerializer {
 	return &TextSerializer{}
 }
 
-func (s *TextSerializer) Serialize(res domain.Result) string {
+func (s *TextSerializer) Serialize(res features.Result) string {
 	switch res := res.(type) {
-	case domain.StringResult:
+	case features.StringResult:
 		return string(res)
-	case domain.ListResult:
+	case features.ListResult:
 		return strings.Join(res, "\n")
-	case domain.MapResult:
+	case features.MapResult:
 		return mapToString(res)
 	default:
 		panic(fmt.Sprintf("text serializer: unsupported result type %T, value: %#v", res, res))
@@ -31,7 +31,7 @@ func (s *TextSerializer) SerializeError(err error) string {
 	return fmt.Sprintf("(error) %s", err)
 }
 
-func mapToString(res domain.MapResult) string {
+func mapToString(res features.MapResult) string {
 	m := res.ToMap()
 	keys := make([]string, 0, len(m))
 	for k := range m {

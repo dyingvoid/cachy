@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/dyingvoid/cachy/internal/domain"
-	domain_errors "github.com/dyingvoid/cachy/internal/domain/errors"
+	"github.com/dyingvoid/cachy/internal/features"
 )
 
 type StringStorage struct {
@@ -43,7 +43,7 @@ func (s *StringStorage) Get(key string) (domain.StringRecord, error) {
 	sh.mu.RUnlock()
 
 	if !ok {
-		return domain.StringRecord{}, domain_errors.ErrNotFound
+		return domain.StringRecord{}, features.ErrNotFound
 	}
 
 	if value.Expired() {
@@ -52,11 +52,11 @@ func (s *StringStorage) Get(key string) (domain.StringRecord, error) {
 
 		value, ok = sh.data[key]
 		if !ok {
-			return domain.StringRecord{}, domain_errors.ErrNotFound
+			return domain.StringRecord{}, features.ErrNotFound
 		}
 		if value.Expired() {
 			delete(sh.data, key)
-			return domain.StringRecord{}, domain_errors.ErrNotFound
+			return domain.StringRecord{}, features.ErrNotFound
 		}
 	}
 
@@ -70,7 +70,7 @@ func (s *StringStorage) Delete(key string) error {
 
 	_, ok := sh.data[key]
 	if !ok {
-		return domain_errors.ErrNotFound
+		return features.ErrNotFound
 	}
 
 	delete(sh.data, key)
