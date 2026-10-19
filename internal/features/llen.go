@@ -1,7 +1,5 @@
 package features
 
-import "fmt"
-
 type LLenCmd struct {
 	Key string
 	commandMarker
@@ -21,5 +19,5 @@ func (h *ProtocolHandler) executeLLen(cmd LLenCmd) (Result, error) {
 		return nil, err
 	}
 
-	return StringResult(fmt.Sprintf("(integer) %d", n)), nil
+	return IntResult(n), nil
 }

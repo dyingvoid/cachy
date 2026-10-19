@@ -21,5 +21,5 @@ func (h *ProtocolHandler) executeGet(cmd GetCmd) (Result, error) {
 		return nil, fmt.Errorf("failed to fetch: %w", err)
 	}
 
-	return StringResult(record.Value), nil
+	return BulkStringResult(record.Value), nil
 }

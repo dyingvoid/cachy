@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/dyingvoid/cachy/internal/features"
 )
 
 var (
@@ -14,6 +18,81 @@ var (
 )
 
 type Serializer struct {
+}
+
+func (s *Serializer) Serialize(res features.Result) ([]byte, error) {
+	switch res := res.(type) {
+	case features.StringResult:
+		return s.SimpleString(string(res))
+	case features.BulkStringResult:
+		return s.BulkString(string(res)), nil
+	case features.IntResult:
+		return s.Integer(int64(res)), nil
+	case features.ListResult:
+		elements := make([][]byte, 0, len(res))
+		for _, element := range res {
+			elements = append(elements, s.BulkString(element))
+		}
+		return s.Array(elements...), nil
+	case features.MapResult:
+		m := res.ToMap()
+		keys := make([]string, 0, len(m))
+		for key := range m {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		pairs := make([]KeyValue, 0, len(keys))
+		for _, key := range keys {
+			pairs = append(pairs, KeyValue{
+				Key:   s.BulkString(key),
+				Value: s.BulkString(m[key]),
+			})
+		}
+		return s.Map(pairs...)
+	case features.FileResult:
+		return s.BulkString(string(res.Content)), nil
+	default:
+		return nil, fmt.Errorf("resp: unsupported result type %T", res)
+	}
+}
+
+func (s *Serializer) SerializeCommand(cmd features.WriteCommand) []byte {
+	var fields []string
+	switch cmd := cmd.(type) {
+	case features.SetCmd:
+		fields = []string{"SET", cmd.Key, cmd.Value}
+		if cmd.Expiry != nil {
+			fields = append(fields, expiryFields(*cmd.Expiry)...)
+		}
+	case features.LPushCmd:
+		fields = make([]string, 0, len(cmd.Values)+2)
+		fields = append(fields, "LPUSH", cmd.Key)
+		fields = append(fields, cmd.Values...)
+	case features.RPushCmd:
+		fields = make([]string, 0, len(cmd.Values)+2)
+		fields = append(fields, "RPUSH", cmd.Key)
+		fields = append(fields, cmd.Values...)
+	case features.LPopCmd:
+		fields = []string{"LPOP", cmd.Key, strconv.Itoa(cmd.Count)}
+	default:
+		panic(fmt.Sprintf("resp serializer: unsupported command type %T, value: %#v", cmd, cmd))
+	}
+
+	elements := make([][]byte, 0, len(fields))
+	for _, field := range fields {
+		elements = append(elements, s.BulkString(field))
+	}
+
+	return s.Array(elements...)
+}
+
+func expiryFields(expiry time.Duration) []string {
+	if expiry%time.Second == 0 {
+		return []string{"EX", strconv.FormatInt(int64(expiry/time.Second), 10)}
+	}
+
+	return []string{"PX", strconv.FormatInt(expiry.Milliseconds(), 10)}
 }
 
 func (s *Serializer) SimpleString(str string) ([]byte, error) {

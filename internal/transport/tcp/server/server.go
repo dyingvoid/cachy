@@ -13,6 +13,7 @@ import (
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
 	"github.com/dyingvoid/cachy/internal/features"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+	"github.com/dyingvoid/cachy/internal/infrastructure/resp3"
 )
 
 type Server struct {
@@ -22,8 +23,10 @@ type Server struct {
 	ln net.Listener
 	wg sync.WaitGroup
 
-	handler    Handler
-	serializer features.Serializer
+	handler Handler
+
+	// TODO: to interface
+	serializer resp3.Serializer
 }
 
 type Handler interface {
@@ -37,7 +40,7 @@ func NewServer(
 	cfg ServerConfig,
 	log *slog.Logger,
 	handler Handler,
-	serializer features.Serializer,
+	serializer resp3.Serializer,
 ) *Server {
 	return &Server{
 		cfg:        cfg,
@@ -119,7 +122,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
 		results, err := s.handler.Handle(ctx, state, scanner.Bytes())
 		if err != nil {
-			if err := s.write(ctx, conn, &writeMu, s.serializer.SerializeError(err)); err != nil {
+			if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
 				return
 			}
 			continue
@@ -136,7 +139,15 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 				continue
 			}
 
-			if err := s.write(ctx, conn, &writeMu, s.serializer.Serialize(result)); err != nil {
+			bytes, err := s.serializer.Serialize(result)
+			if err != nil {
+				if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
+					return
+				}
+				continue
+			}
+
+			if err := s.write(ctx, conn, &writeMu, bytes); err != nil {
 				return
 			}
 		}
@@ -172,13 +183,13 @@ func (s *Server) write(
 	ctx context.Context,
 	conn net.Conn,
 	mu *sync.Mutex,
-	text string,
+	data []byte,
 ) error {
 	mu.Lock()
 	defer mu.Unlock()
 
 	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
-	_, werr := fmt.Fprintf(conn, "%s\n", text)
+	_, werr := fmt.Fprint(conn, data)
 	if werr != nil {
 		core_logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
 		return werr

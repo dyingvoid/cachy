@@ -8,6 +8,10 @@ type Result interface {
 
 type StringResult string
 
+type BulkStringResult string
+
+type IntResult int64
+
 type ListResult []string
 
 type MapResult interface {
@@ -59,6 +63,10 @@ type StreamingResult struct {
 func (ListResult) isResult() {}
 
 func (StringResult) isResult() {}
+
+func (BulkStringResult) isResult() {}
+
+func (IntResult) isResult() {}
 
 func (Info) isResult() {}
 
