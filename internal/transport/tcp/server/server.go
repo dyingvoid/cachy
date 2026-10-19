@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
 	"github.com/dyingvoid/cachy/internal/features"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
-	"github.com/dyingvoid/cachy/internal/infrastructure/resp3"
 )
 
 type Server struct {
@@ -25,8 +25,7 @@ type Server struct {
 
 	handler Handler
 
-	// TODO: to interface
-	serializer resp3.Serializer
+	serializer Serializer
 }
 
 type Handler interface {
@@ -36,11 +35,17 @@ type Handler interface {
 	)
 }
 
+type Serializer interface {
+	Serialize(features.Result) ([]byte, error)
+	SerializeCommand(features.WriteCommand) []byte
+	BulkError(string) []byte
+}
+
 func NewServer(
 	cfg ServerConfig,
 	log *slog.Logger,
 	handler Handler,
-	serializer resp3.Serializer,
+	serializer Serializer,
 ) *Server {
 	return &Server{
 		cfg:        cfg,
@@ -188,11 +193,20 @@ func (s *Server) write(
 	mu.Lock()
 	defer mu.Unlock()
 
-	conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout))
-	_, werr := fmt.Fprint(conn, data)
-	if werr != nil {
-		core_logger.FromContext(ctx).Error("write error", slog.Any("error", werr))
-		return werr
+	if err := conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout)); err != nil {
+		return err
+	}
+
+	for len(data) > 0 {
+		n, err := conn.Write(data)
+		if err != nil {
+			core_logger.FromContext(ctx).Error("write error", slog.Any("error", err))
+			return err
+		}
+		if n == 0 {
+			return io.ErrShortWrite
+		}
+		data = data[n:]
 	}
 
 	return nil

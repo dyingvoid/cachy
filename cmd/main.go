@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/dyingvoid/cachy/internal/config"
-	core_serializer "github.com/dyingvoid/cachy/internal/core/serializer"
 	"github.com/dyingvoid/cachy/internal/features"
 	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
+	infrastructure_resp3 "github.com/dyingvoid/cachy/internal/infrastructure/resp3"
 	infrastructure_storage "github.com/dyingvoid/cachy/internal/infrastructure/storage"
 	transport_tcp_client "github.com/dyingvoid/cachy/internal/transport/tcp/client"
 	transport_tcp_server "github.com/dyingvoid/cachy/internal/transport/tcp/server"
@@ -44,7 +44,7 @@ func main() {
 
 	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
 	parser := features.NewProtocolParser()
-	serializer := core_serializer.NewTextSerializer()
+	serializer := &infrastructure_resp3.Serializer{}
 	replicationHandler := features.NewReplicationHandler(featuresCfg.ReplicationBuffer)
 
 	h := features.NewProtocolHandler(parser, storage, replicationHandler)
