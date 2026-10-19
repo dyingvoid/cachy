@@ -12,12 +12,14 @@ import (
 func (s *TextSerializer) SerializeCommand(cmd features.WriteCommand) string {
 	switch cmd := cmd.(type) {
 	case features.SetCmd:
+		// TODO: serialize function
 		return serializeSet(cmd)
 	case features.LPushCmd:
 		return serializePush("LPUSH", cmd.Key, cmd.Values)
 	case features.RPushCmd:
 		return serializePush("RPUSH", cmd.Key, cmd.Values)
 	case features.LPopCmd:
+		// TODO: use serialize function
 		return fmt.Sprintf("LPOP %s %d", cmd.Key, cmd.Count)
 	default:
 		panic(fmt.Sprintf("text serializer: unsupported command type %T, value: %#v", cmd, cmd))

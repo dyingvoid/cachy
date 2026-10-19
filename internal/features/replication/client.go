@@ -94,6 +94,7 @@ func (c *ReplicationClient) receiveFile() error {
 		return fmt.Errorf("read file content: %w", err)
 	}
 
+	// TODO: later, maybe no need for this
 	if _, err := c.reader.ReadByte(); err != nil {
 		return fmt.Errorf("read file terminator: %w", err)
 	}
