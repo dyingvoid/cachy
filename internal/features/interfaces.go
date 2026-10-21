@@ -7,10 +7,6 @@ import (
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
-type Parser interface {
-	Parse(in string) (features_commands.Command, error)
-}
-
 type Executor interface {
 	Execute(context.Context, features_commands.Command) ([]Result, error)
 }

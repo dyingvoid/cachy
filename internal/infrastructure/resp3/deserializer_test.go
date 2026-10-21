@@ -274,9 +274,8 @@ func TestDeserializer_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestDeserializer_DeserializeCommand(t *testing.T) {
+func TestDeserializer_ReadCommand(t *testing.T) {
 	s := &Serializer{}
-	d := &Deserializer{}
 	expiry := 10 * time.Second
 	port := 6379
 	capa := "psync2"
@@ -327,20 +326,20 @@ func TestDeserializer_DeserializeCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := d.DeserializeCommand(s.SerializeCommand(tt.cmd))
+			d := NewDeserializer(bytes.NewReader(s.SerializeCommand(tt.cmd)))
+			got, err := d.ReadCommand()
 			if err != nil {
-				t.Fatalf("DeserializeCommand() returned unexpected error: %v", err)
+				t.Fatalf("ReadCommand() returned unexpected error: %v", err)
 			}
 			if !reflect.DeepEqual(got, tt.cmd) {
-				t.Fatalf("DeserializeCommand() = %+v, want %+v", got, tt.cmd)
+				t.Fatalf("ReadCommand() = %+v, want %+v", got, tt.cmd)
 			}
 		})
 	}
 }
 
-func TestDeserializer_DeserializeCommandErrors(t *testing.T) {
+func TestDeserializer_ReadCommandErrors(t *testing.T) {
 	s := &Serializer{}
-	d := &Deserializer{}
 
 	tests := []struct {
 		name string
@@ -369,12 +368,13 @@ func TestDeserializer_DeserializeCommandErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := d.DeserializeCommand(tt.in)
+			d := NewDeserializer(bytes.NewReader(tt.in))
+			got, err := d.ReadCommand()
 			if !errors.Is(err, tt.want) {
-				t.Fatalf("DeserializeCommand(%q) error = %v, want %v", tt.in, err, tt.want)
+				t.Fatalf("ReadCommand(%q) error = %v, want %v", tt.in, err, tt.want)
 			}
 			if got != nil {
-				t.Fatalf("DeserializeCommand(%q) = %+v, want nil", tt.in, got)
+				t.Fatalf("ReadCommand(%q) = %+v, want nil", tt.in, got)
 			}
 		})
 	}

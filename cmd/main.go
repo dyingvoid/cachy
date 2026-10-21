@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/dyingvoid/cachy/internal/config"
 	"github.com/dyingvoid/cachy/internal/features"
-	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 	infrastructure_resp3 "github.com/dyingvoid/cachy/internal/infrastructure/resp3"
 	infrastructure_storage "github.com/dyingvoid/cachy/internal/infrastructure/storage"
@@ -44,11 +44,13 @@ func main() {
 	)
 
 	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
-	parser := features_commands.NewProtocolParser()
 	serializer := &infrastructure_resp3.Serializer{}
+	newDeserializer := func(r io.Reader) transport_tcp_server.Deserializer {
+		return infrastructure_resp3.NewDeserializer(r)
+	}
 	replicationHandler := features.NewReplicationHandler(featuresCfg.ReplicationBuffer)
 
-	h := features.NewProtocolHandler(parser, storage, replicationHandler)
+	h := features.NewProtocolHandler(storage, replicationHandler)
 
 	if appCfg.Role == "slave" {
 		replicaClient, err := handshakeReplication(
@@ -67,7 +69,7 @@ func main() {
 	}
 
 	server := transport_tcp_server.NewServer(
-		serverConfig, log, h, serializer,
+		serverConfig, log, h, serializer, newDeserializer,
 	)
 
 	if err := server.Start(ctx); err != nil && err != context.Canceled {

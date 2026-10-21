@@ -1,7 +1,6 @@
 package transport_tcp_server
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -26,11 +25,12 @@ type Server struct {
 
 	handler Handler
 
-	serializer Serializer
+	serializer      Serializer
+	newDeserializer DeserializerFactory
 }
 
 type Handler interface {
-	Handle(ctx context.Context, state *features_conn.State, request []byte) (
+	Handle(ctx context.Context, state *features_conn.State, cmd features_commands.Command) (
 		results []features.Result,
 		err error,
 	)
@@ -42,17 +42,25 @@ type Serializer interface {
 	BulkError(string) []byte
 }
 
+type Deserializer interface {
+	ReadCommand() (features_commands.Command, error)
+}
+
+type DeserializerFactory func(io.Reader) Deserializer
+
 func NewServer(
 	cfg ServerConfig,
 	log *slog.Logger,
 	handler Handler,
 	serializer Serializer,
+	newDeserializer DeserializerFactory,
 ) *Server {
 	return &Server{
-		cfg:        cfg,
-		log:        log,
-		handler:    handler,
-		serializer: serializer,
+		cfg:             cfg,
+		log:             log,
+		handler:         handler,
+		serializer:      serializer,
+		newDeserializer: newDeserializer,
 	}
 }
 
@@ -123,10 +131,21 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}()
 
 	state := features_conn.NewState()
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
+	deserializer := s.newDeserializer(conn)
+	for {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
-		results, err := s.handler.Handle(ctx, state, scanner.Bytes())
+		cmd, err := deserializer.ReadCommand()
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return
+			}
+			if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
+				return
+			}
+			continue
+		}
+
+		results, err := s.handler.Handle(ctx, state, cmd)
 		if err != nil {
 			if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
 				return
@@ -157,14 +176,6 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 				return
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		core_logger.FromContext(ctx).Error(
-			"read error",
-			slog.String("addr", conn.RemoteAddr().String()),
-			slog.Any("error", err),
-		)
 	}
 }
 

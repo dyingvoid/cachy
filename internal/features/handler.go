@@ -9,37 +9,21 @@ import (
 )
 
 type ProtocolHandler struct {
-	parser      Parser
 	storage     Storage
 	replication *ReplicationHandler
 }
 
 func NewProtocolHandler(
-	parser Parser,
 	storage Storage,
 	replication *ReplicationHandler,
 ) *ProtocolHandler {
 	return &ProtocolHandler{
-		parser:      parser,
 		storage:     storage,
 		replication: replication,
 	}
 }
 
 func (h *ProtocolHandler) Handle(
-	ctx context.Context,
-	state *features_conn.State,
-	request []byte,
-) ([]Result, error) {
-	cmd, err := h.parser.Parse(string(request))
-	if err != nil {
-		return nil, err
-	}
-
-	return h.execute(ctx, state, cmd)
-}
-
-func (h *ProtocolHandler) execute(
 	ctx context.Context,
 	state *features_conn.State,
 	cmd features_commands.Command,

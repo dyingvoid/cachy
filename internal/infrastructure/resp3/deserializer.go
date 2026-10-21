@@ -84,8 +84,8 @@ func (d *Deserializer) Read() (Value, error) {
 	return d.readValue(0)
 }
 
-func (*Deserializer) DeserializeCommand(data []byte) (features_commands.Command, error) {
-	value, err := NewDeserializer(bytes.NewReader(data)).Read()
+func (d *Deserializer) ReadCommand() (features_commands.Command, error) {
+	value, err := d.Read()
 	if err != nil {
 		return nil, err
 	}
