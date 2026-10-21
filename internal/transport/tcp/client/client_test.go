@@ -41,7 +41,7 @@ func TestClientReadWrite(t *testing.T) {
 	}()
 
 	cfg := Config{
-		Address:      listener.Addr().String(),
+		Host:         listener.Addr().String(),
 		Port:         8082,
 		DialTimeout:  time.Second,
 		ReadTimeout:  time.Second,
@@ -96,7 +96,7 @@ func TestClientWriteAfterClose(t *testing.T) {
 	defer listener.Close()
 
 	cfg := Config{
-		Address:      listener.Addr().String(),
+		Host:         listener.Addr().String(),
 		Port:         8082,
 		DialTimeout:  time.Second,
 		ReadTimeout:  time.Second,
@@ -123,7 +123,7 @@ func TestClientWriteAfterClose(t *testing.T) {
 
 func TestNewClientValidation(t *testing.T) {
 	valid := Config{
-		Address:      "127.0.0.1:6379",
+		Host:         "127.0.0.1:6379",
 		Port:         8082,
 		DialTimeout:  time.Second,
 		ReadTimeout:  time.Second,
@@ -136,7 +136,7 @@ func TestNewClientValidation(t *testing.T) {
 	}{
 		{
 			name:   "empty address",
-			mutate: func(cfg *Config) { cfg.Address = " " },
+			mutate: func(cfg *Config) { cfg.Host = " " },
 		},
 		{
 			name:   "zero port",

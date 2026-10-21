@@ -9,17 +9,17 @@ import (
 )
 
 type Config struct {
-	Address      string        `ignored:"true"`
+	Host         string        `ignored:"true"`
 	Port         int           `ignored:"true"`
-	DialTimeout  time.Duration `envconfig:"DIAL_TIMEOUT" default:"5s"`
-	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT" default:"5s"`
-	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT" default:"5s"`
+	DialTimeout  time.Duration `envconfig:"DIAL_TIMEOUT" default:"100s"`
+	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT" default:"100s"`
+	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT" default:"100s"`
 }
 
-func NewConfig(address string, port int) (Config, error) {
+func NewConfig(host string, port int) (Config, error) {
 	cfg := Config{
-		Address: address,
-		Port:    port,
+		Host: host,
+		Port: port,
 	}
 
 	if err := envconfig.Process("REPLICA", &cfg); err != nil {
@@ -42,7 +42,7 @@ func NewConfigMust(address string, port int) Config {
 }
 
 func (c Config) validate() error {
-	if strings.TrimSpace(c.Address) == "" {
+	if strings.TrimSpace(c.Host) == "" {
 		return fmt.Errorf("address is required")
 	}
 	if c.Port <= 0 || c.Port > 65535 {

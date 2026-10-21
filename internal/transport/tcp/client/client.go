@@ -33,9 +33,9 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	dialer := net.Dialer{Timeout: cfg.DialTimeout}
-	conn, err := dialer.DialContext(ctx, "tcp", cfg.Address)
+	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 	if err != nil {
-		return nil, fmt.Errorf("dial %s: %w", cfg.Address, err)
+		return nil, fmt.Errorf("dial %s: %w", cfg.Host, err)
 	}
 
 	return &Client{
