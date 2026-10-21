@@ -39,6 +39,7 @@ const (
 
 var (
 	errUnexpectedType    = errors.New("resp: unexpected type byte")
+	errUnexpectedKind    = errors.New("resp: unexpected value kind")
 	errInvalidLength     = errors.New("resp: invalid length")
 	errInvalidNull       = errors.New("resp: invalid null")
 	errInvalidInteger    = errors.New("resp: invalid integer")
@@ -107,6 +108,30 @@ func (d *Deserializer) ReadCommand() (features_commands.Command, error) {
 	}
 
 	return cmd, nil
+}
+
+func (d *Deserializer) ReadSimpleString() (string, error) {
+	value, err := d.Read()
+	if err != nil {
+		return "", err
+	}
+	if value.Kind != KindSimpleString {
+		return "", fmt.Errorf("%w: %q", errUnexpectedKind, value.Kind)
+	}
+
+	return value.String, nil
+}
+
+func (d *Deserializer) DiscardBulkString() error {
+	value, err := d.Read()
+	if err != nil {
+		return err
+	}
+	if value.Kind != KindBulkString {
+		return fmt.Errorf("%w: %q", errUnexpectedKind, value.Kind)
+	}
+
+	return nil
 }
 
 func (d *Deserializer) readValue(depth int) (Value, error) {

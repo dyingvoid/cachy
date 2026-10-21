@@ -101,10 +101,10 @@ func (h *ProtocolHandler) executeRepl(
 	cmd features_commands.ReplConfCmd,
 ) (Result, error) {
 	if cmd.ListeningPort != nil {
-		state.Replication.ListeningPort = cmd.ListeningPort
+		state.ListeningPort = cmd.ListeningPort
 	}
 	if cmd.Capa != nil {
-		state.Replication.Capa = cmd.Capa
+		state.Capa = cmd.Capa
 	}
 
 	return StringResult("OK"), nil
@@ -114,8 +114,8 @@ func (h *ProtocolHandler) executePsync(
 	state *features_conn.State,
 	cmd features_commands.PsyncCmd,
 ) ([]Result, error) {
-	state.Replication.ReplicationID = cmd.ReplicationID
-	state.Replication.Offset = cmd.Offset
+	state.ReplicationID = cmd.ReplicationID
+	state.Offset = cmd.Offset
 
 	if !state.TryStartReplication() {
 		return nil, ErrReplicationStateIncomplete

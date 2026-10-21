@@ -3,53 +3,19 @@ package features_replication
 import (
 	"context"
 	"errors"
-	"io"
 	"reflect"
 	"testing"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
-
-type fakeCodec struct {
-	encoded   []Message
-	responses []Response
-	err       error
-}
-
-func (f *fakeCodec) Encode(msg Message) ([]byte, error) {
-	f.encoded = append(f.encoded, msg)
-	return []byte(msg.Command()), nil
-}
-
-func (f *fakeCodec) Decode([]byte) (Response, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	if len(f.responses) == 0 {
-		return nil, errors.New("no responses")
-	}
-
-	resp := f.responses[0]
-	f.responses = f.responses[1:]
-	return resp, nil
-}
 
 type fakeTransport struct {
 	port int
-	raw  []byte
 	err  error
 }
 
-func (f *fakeTransport) Read(p []byte) (int, error) {
-	if f.err != nil {
-		return 0, f.err
-	}
-	if len(f.raw) == 0 {
-		return 0, io.EOF
-	}
-
-	n := copy(p, f.raw)
-	f.raw = f.raw[n:]
-
-	return n, nil
+func (f *fakeTransport) Read([]byte) (int, error) {
+	return 0, errors.New("unexpected read")
 }
 
 func (f *fakeTransport) Write(p []byte) (int, error) {
@@ -64,24 +30,44 @@ func (f *fakeTransport) Port() int {
 	return f.port
 }
 
-func (f *fakeTransport) Close() error {
-	return nil
+type fakeSerializer struct {
+	commands []features_commands.Command
+}
+
+func (f *fakeSerializer) SerializeCommand(cmd features_commands.Command) []byte {
+	f.commands = append(f.commands, cmd)
+	return []byte("command")
+}
+
+type fakeDeserializer struct {
+	replies     []string
+	snapshotErr error
+	readErr     error
+}
+
+func (f *fakeDeserializer) ReadSimpleString() (string, error) {
+	if f.readErr != nil {
+		return "", f.readErr
+	}
+	if len(f.replies) == 0 {
+		return "", errors.New("no replies left")
+	}
+
+	reply := f.replies[0]
+	f.replies = f.replies[1:]
+	return reply, nil
+}
+
+func (f *fakeDeserializer) DiscardBulkString() error {
+	return f.snapshotErr
 }
 
 func TestReplicationClientHandshake(t *testing.T) {
-	codec := &fakeCodec{
-		responses: []Response{
-			PongResponse{},
-			OKResponse{},
-			OKResponse{},
-			PsyncResponse{ReplID: "abc123", Offset: 0},
-		},
+	serializer := &fakeSerializer{}
+	deserializer := &fakeDeserializer{
+		replies: []string{"PONG", "OK", "OK", "FULLRESYNC abc123 0"},
 	}
-	transport := &fakeTransport{
-		port: 8082,
-		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$0\r\n\n"),
-	}
-	client := NewReplicationClient(codec, transport)
+	client := NewReplicationClient(&fakeTransport{port: 8082}, serializer, deserializer)
 
 	if err := client.Handshake(context.Background()); err != nil {
 		t.Fatalf("Handshake returned unexpected error: %v", err)
@@ -89,92 +75,83 @@ func TestReplicationClientHandshake(t *testing.T) {
 
 	port := 8082
 	capa := "psync2"
-	want := []Message{
-		PingMessage{},
-		ReplConfMessage{Port: &port},
-		ReplConfMessage{Capa: &capa},
-		PsyncMessage{ReplicationID: "?", Offset: -1},
+	want := []features_commands.Command{
+		features_commands.PingCmd{},
+		features_commands.ReplConfCmd{ListeningPort: &port},
+		features_commands.ReplConfCmd{Capa: &capa},
+		features_commands.PsyncCmd{ReplicationID: "?", Offset: -1},
 	}
-	if !reflect.DeepEqual(codec.encoded, want) {
-		t.Fatalf("Handshake encoded %+v, want %+v", codec.encoded, want)
-	}
-}
-
-func TestReplicationClientHandshakeWithFile(t *testing.T) {
-	codec := &fakeCodec{
-		responses: []Response{
-			PongResponse{},
-			OKResponse{},
-			OKResponse{},
-			PsyncResponse{ReplID: "abc123", Offset: 0},
-		},
-	}
-	transport := &fakeTransport{
-		port: 8082,
-		raw:  []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$3\r\nabc\n"),
-	}
-	client := NewReplicationClient(codec, transport)
-
-	if err := client.Handshake(context.Background()); err != nil {
-		t.Fatalf("Handshake returned unexpected error: %v", err)
+	if !reflect.DeepEqual(serializer.commands, want) {
+		t.Fatalf("Handshake sent %#v, want %#v", serializer.commands, want)
 	}
 }
 
 func TestReplicationClientHandshakeErrors(t *testing.T) {
 	tests := []struct {
-		name      string
-		responses []Response
-		transport *fakeTransport
-		codecErr  error
+		name         string
+		replies      []string
+		readErr      error
+		snapshotErr  error
+		transportErr error
 	}{
 		{
-			name:      "unexpected ping response",
-			responses: []Response{OKResponse{}},
-			transport: &fakeTransport{port: 8082, raw: []byte("OK\n")},
+			name:    "unexpected ping reply",
+			replies: []string{"OK"},
 		},
 		{
-			name:      "unexpected replconf response",
-			responses: []Response{PongResponse{}, PongResponse{}},
-			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nPONG\n")},
+			name:    "unexpected replconf reply",
+			replies: []string{"PONG", "PONG"},
 		},
 		{
-			name:      "unexpected psync response",
-			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, OKResponse{}},
-			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nOK\n")},
+			name:    "unexpected psync reply",
+			replies: []string{"PONG", "OK", "OK", "OK"},
 		},
 		{
-			name:      "unexpected file header",
-			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, PsyncResponse{ReplID: "abc123", Offset: 0}},
-			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\nOK\n")},
+			name:    "read error",
+			replies: []string{"PONG"},
+			readErr: errors.New("read failed"),
 		},
 		{
-			name:      "invalid file length",
-			responses: []Response{PongResponse{}, OKResponse{}, OKResponse{}, PsyncResponse{ReplID: "abc123", Offset: 0}},
-			transport: &fakeTransport{port: 8082, raw: []byte("PONG\nOK\nOK\nFULLRESYNC abc123 0\n$nope\r\n")},
+			name:        "snapshot error",
+			replies:     []string{"PONG", "OK", "OK", "FULLRESYNC abc123 0"},
+			snapshotErr: errors.New("snapshot failed"),
 		},
 		{
-			name:      "transport error",
-			transport: &fakeTransport{port: 8082, err: errors.New("transport failed")},
-		},
-		{
-			name:      "decode error",
-			responses: []Response{PongResponse{}},
-			transport: &fakeTransport{port: 8082, raw: []byte("PONG\n")},
-			codecErr:  errors.New("decode failed"),
+			name:         "transport error",
+			transportErr: errors.New("transport failed"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			codec := &fakeCodec{
-				responses: tt.responses,
-				err:       tt.codecErr,
-			}
-			client := NewReplicationClient(codec, tt.transport)
+			client := NewReplicationClient(
+				&fakeTransport{port: 8082, err: tt.transportErr},
+				&fakeSerializer{},
+				&fakeDeserializer{
+					replies:     tt.replies,
+					readErr:     tt.readErr,
+					snapshotErr: tt.snapshotErr,
+				},
+			)
 
 			if err := client.Handshake(context.Background()); err == nil {
 				t.Fatal("Handshake returned nil error")
 			}
 		})
+	}
+}
+
+func TestReplicationClientHandshakeCanceledContext(t *testing.T) {
+	client := NewReplicationClient(
+		&fakeTransport{port: 8082},
+		&fakeSerializer{},
+		&fakeDeserializer{},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := client.Handshake(ctx); err == nil {
+		t.Fatal("Handshake returned nil error")
 	}
 }

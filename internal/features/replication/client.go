@@ -1,134 +1,119 @@
 package features_replication
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
-type ReplicationClient struct {
-	codec     Codec
-	transport ClientTransport
-	reader    *bufio.Reader
+type ClientTransport interface {
+	io.ReadWriter
+	Port() int
 }
 
-func NewReplicationClient(codec Codec, transport ClientTransport) *ReplicationClient {
+type Serializer interface {
+	SerializeCommand(features_commands.Command) []byte
+}
+
+type Deserializer interface {
+	ReadSimpleString() (string, error)
+	DiscardBulkString() error
+}
+
+type ReplicationClient struct {
+	transport    ClientTransport
+	serializer   Serializer
+	deserializer Deserializer
+}
+
+func NewReplicationClient(
+	transport ClientTransport,
+	serializer Serializer,
+	deserializer Deserializer,
+) *ReplicationClient {
 	return &ReplicationClient{
-		codec:     codec,
-		transport: transport,
-		reader:    bufio.NewReader(transport),
+		transport:    transport,
+		serializer:   serializer,
+		deserializer: deserializer,
 	}
 }
 
 func (c *ReplicationClient) Handshake(ctx context.Context) error {
-	resp, err := c.send(ctx, PingMessage{})
-	if err != nil {
-		return err
-	}
-	if _, ok := resp.(PongResponse); !ok {
-		return fmt.Errorf("unexpected PING response: %T", resp)
-	}
-
 	port := c.transport.Port()
 	capa := "psync2"
-	for _, msg := range []Message{
-		ReplConfMessage{Port: &port},
-		ReplConfMessage{Capa: &capa},
-	} {
-		resp, err := c.send(ctx, msg)
-		if err != nil {
+
+	steps := []struct {
+		cmd  features_commands.Command
+		want string
+	}{
+		{features_commands.PingCmd{}, "PONG"},
+		{features_commands.ReplConfCmd{ListeningPort: &port}, "OK"},
+		{features_commands.ReplConfCmd{Capa: &capa}, "OK"},
+	}
+	for _, step := range steps {
+		if err := c.confirm(ctx, step.cmd, step.want); err != nil {
 			return err
-		}
-		if _, ok := resp.(OKResponse); !ok {
-			return fmt.Errorf("unexpected REPLCONF response: %T", resp)
 		}
 	}
 
-	resp, err = c.send(ctx, PsyncMessage{
+	reply, err := c.exchange(ctx, features_commands.PsyncCmd{
 		ReplicationID: "?",
 		Offset:        -1,
 	})
 	if err != nil {
 		return err
 	}
-	if _, ok := resp.(PsyncResponse); !ok {
-		return fmt.Errorf("unexpected PSYNC response: %T", resp)
+	if !strings.HasPrefix(reply, "FULLRESYNC ") {
+		return fmt.Errorf("unexpected PSYNC reply: %q", reply)
 	}
 
-	if err := c.receiveFile(); err != nil {
+	if err := c.deserializer.DiscardBulkString(); err != nil {
+		return fmt.Errorf("read snapshot: %w", err)
+	}
+
+	return nil
+}
+
+func (c *ReplicationClient) confirm(
+	ctx context.Context,
+	cmd features_commands.Command,
+	want string,
+) error {
+	reply, err := c.exchange(ctx, cmd)
+	if err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (c *ReplicationClient) receiveFile() error {
-	header, err := c.reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("read file header: %w", err)
-	}
-
-	header = strings.TrimSpace(header)
-	if !strings.HasPrefix(header, "$") {
-		return fmt.Errorf(
-			"read file header %q: %w",
-			header,
-			ErrUnexpectedResponse,
-		)
-	}
-
-	size, err := strconv.Atoi(strings.TrimPrefix(header, "$"))
-	if err != nil || size < 0 {
-		return fmt.Errorf(
-			"parse file length %q: %w",
-			header,
-			ErrUnexpectedResponse,
-		)
-	}
-
-	content := make([]byte, size)
-	if _, err := io.ReadFull(c.reader, content); err != nil {
-		return fmt.Errorf("read file content: %w", err)
-	}
-
-	// TODO: later, maybe no need for this
-	if _, err := c.reader.ReadByte(); err != nil {
-		return fmt.Errorf("read file terminator: %w", err)
+	if reply != want {
+		return fmt.Errorf("unexpected %T reply: %q, want %q", cmd, reply, want)
 	}
 
 	return nil
 }
 
-func (c *ReplicationClient) send(ctx context.Context, msg Message) (Response, error) {
+func (c *ReplicationClient) exchange(
+	ctx context.Context,
+	cmd features_commands.Command,
+) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("send message: %w", err)
+		return "", fmt.Errorf("send command: %w", err)
 	}
 
-	payload, err := c.codec.Encode(msg)
-	if err != nil {
-		return nil, fmt.Errorf("encode message: %w", err)
-	}
-
+	payload := c.serializer.SerializeCommand(cmd)
 	n, err := c.transport.Write(payload)
 	if err != nil {
-		return nil, fmt.Errorf("write message: %w", err)
+		return "", fmt.Errorf("write command: %w", err)
 	}
 	if n != len(payload) {
-		return nil, fmt.Errorf("write message: %w", io.ErrShortWrite)
+		return "", fmt.Errorf("write command: %w", io.ErrShortWrite)
 	}
 
-	raw, err := c.reader.ReadBytes('\n')
+	reply, err := c.deserializer.ReadSimpleString()
 	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+		return "", fmt.Errorf("read reply: %w", err)
 	}
 
-	resp, err := c.codec.Decode(raw)
-	if err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	return resp, nil
+	return reply, nil
 }

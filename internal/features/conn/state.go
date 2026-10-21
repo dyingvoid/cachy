@@ -1,7 +1,5 @@
 package features_conn
 
-import features_replication "github.com/dyingvoid/cachy/internal/features/replication"
-
 type Mode uint8
 
 const (
@@ -10,8 +8,11 @@ const (
 )
 
 type State struct {
-	Mode        Mode
-	Replication features_replication.State
+	Mode          Mode
+	ListeningPort *int
+	Capa          *string
+	Offset        int64
+	ReplicationID string
 }
 
 func NewState() *State {
@@ -19,10 +20,14 @@ func NewState() *State {
 }
 
 func (s *State) TryStartReplication() bool {
-	if s.Mode == ModeReplicationStreaming || !s.Replication.Ready() {
+	if s.Mode == ModeReplicationStreaming || !s.ready() {
 		return false
 	}
 
 	s.Mode = ModeReplicationStreaming
 	return true
+}
+
+func (s *State) ready() bool {
+	return s.ListeningPort != nil && s.Capa != nil && s.ReplicationID != ""
 }

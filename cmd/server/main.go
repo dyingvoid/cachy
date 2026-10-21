@@ -93,8 +93,9 @@ func handshakeReplication(
 	}
 
 	replicationClient := features_replication.NewReplicationClient(
-		features_replication.NewTextCodec(),
 		client,
+		&infrastructure_resp3.Serializer{},
+		infrastructure_resp3.NewDeserializer(client),
 	)
 	if err := replicationClient.Handshake(ctx); err != nil {
 		client.Close()

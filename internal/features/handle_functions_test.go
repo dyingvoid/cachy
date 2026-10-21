@@ -8,7 +8,6 @@ import (
 	core_state "github.com/dyingvoid/cachy/internal/core/state"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
-	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 )
 
 func TestExecutePsync(t *testing.T) {
@@ -16,10 +15,8 @@ func TestExecutePsync(t *testing.T) {
 	port := 8081
 	capa := "psync2"
 	state := &features_conn.State{
-		Replication: features_replication.State{
-			ListeningPort: &port,
-			Capa:          &capa,
-		},
+		ListeningPort: &port,
+		Capa:          &capa,
 	}
 
 	res, err := h.executePsync(state, features_commands.PsyncCmd{ReplicationID: "?", Offset: -1})
