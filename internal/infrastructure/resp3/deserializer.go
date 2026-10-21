@@ -8,6 +8,8 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 const (
@@ -48,6 +50,7 @@ var (
 	errOddMapElements    = errors.New("resp: map requires an even number of elements")
 	errTooDeep           = errors.New("resp: nesting too deep")
 	errLengthTooLarge    = errors.New("resp: length too large")
+	errInvalidCommand    = errors.New("resp: command must be an array of bulk strings")
 )
 
 type Pair struct {
@@ -79,6 +82,31 @@ func NewDeserializer(r io.Reader) *Deserializer {
 
 func (d *Deserializer) Read() (Value, error) {
 	return d.readValue(0)
+}
+
+func (*Deserializer) DeserializeCommand(data []byte) (features_commands.Command, error) {
+	value, err := NewDeserializer(bytes.NewReader(data)).Read()
+	if err != nil {
+		return nil, err
+	}
+	if value.Kind != KindArray {
+		return nil, errInvalidCommand
+	}
+
+	fields := make([]string, 0, len(value.Elements))
+	for _, element := range value.Elements {
+		if element.Kind != KindBulkString {
+			return nil, errInvalidCommand
+		}
+		fields = append(fields, element.String)
+	}
+
+	cmd, err := features_commands.NewProtocolParser().ParseFields(fields)
+	if err != nil {
+		return nil, err
+	}
+
+	return cmd, nil
 }
 
 func (d *Deserializer) readValue(depth int) (Value, error) {

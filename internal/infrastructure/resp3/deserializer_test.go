@@ -6,9 +6,13 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 func TestDeserializer_RoundTrip(t *testing.T) {
@@ -266,6 +270,112 @@ func TestDeserializer_RoundTrip(t *testing.T) {
 				t.Fatalf("Read(%q) returned unexpected error: %v", tt.in, err)
 			}
 			assertValue(t, got, tt.want)
+		})
+	}
+}
+
+func TestDeserializer_DeserializeCommand(t *testing.T) {
+	s := &Serializer{}
+	d := &Deserializer{}
+	expiry := 10 * time.Second
+	port := 6379
+	capa := "psync2"
+
+	tests := []struct {
+		name string
+		cmd  features_commands.Command
+	}{
+		{name: "ping", cmd: features_commands.PingCmd{}},
+		{name: "info", cmd: features_commands.InfoCmd{}},
+		{name: "get", cmd: features_commands.GetCmd{Key: "key"}},
+		{name: "set", cmd: features_commands.SetCmd{Key: "key", Value: "value"}},
+		{
+			name: "set with expiry",
+			cmd:  features_commands.SetCmd{Key: "key", Value: "value", Expiry: &expiry},
+		},
+		{
+			name: "set with spaces",
+			cmd:  features_commands.SetCmd{Key: "key", Value: "hello world"},
+		},
+		{
+			name: "lpush",
+			cmd:  features_commands.LPushCmd{Key: "key", Values: []string{"a", "b"}},
+		},
+		{
+			name: "rpush",
+			cmd:  features_commands.RPushCmd{Key: "key", Values: []string{"a", "b"}},
+		},
+		{name: "lpop", cmd: features_commands.LPopCmd{Key: "key", Count: 2}},
+		{
+			name: "lrange",
+			cmd:  features_commands.LRangeCmd{Key: "key", Start: 0, Stop: -1},
+		},
+		{name: "llen", cmd: features_commands.LLenCmd{Key: "key"}},
+		{
+			name: "psync",
+			cmd:  features_commands.PsyncCmd{ReplicationID: "?", Offset: -1},
+		},
+		{
+			name: "replconf listening-port",
+			cmd:  features_commands.ReplConfCmd{ListeningPort: &port},
+		},
+		{
+			name: "replconf capa",
+			cmd:  features_commands.ReplConfCmd{Capa: &capa},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := d.DeserializeCommand(s.SerializeCommand(tt.cmd))
+			if err != nil {
+				t.Fatalf("DeserializeCommand() returned unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.cmd) {
+				t.Fatalf("DeserializeCommand() = %+v, want %+v", got, tt.cmd)
+			}
+		})
+	}
+}
+
+func TestDeserializer_DeserializeCommandErrors(t *testing.T) {
+	s := &Serializer{}
+	d := &Deserializer{}
+
+	tests := []struct {
+		name string
+		in   []byte
+		want error
+	}{
+		{name: "invalid resp", in: []byte("@\r\n"), want: errUnexpectedType},
+		{name: "not an array", in: s.BulkString("PING"), want: errInvalidCommand},
+		{
+			name: "non bulk string element",
+			in:   s.Array(s.Integer(1)),
+			want: errInvalidCommand,
+		},
+		{
+			name: "unknown command",
+			in:   s.Array(s.BulkString("DEL"), s.BulkString("key")),
+			want: features_commands.ErrUnknownCommand,
+		},
+		{
+			name: "invalid arguments",
+			in:   s.Array(s.BulkString("GET")),
+			want: features_commands.ErrInvalidArguments,
+		},
+		{name: "empty array", in: s.Array(), want: features_commands.ErrEmptyCommand},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := d.DeserializeCommand(tt.in)
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("DeserializeCommand(%q) error = %v, want %v", tt.in, err, tt.want)
+			}
+			if got != nil {
+				t.Fatalf("DeserializeCommand(%q) = %+v, want nil", tt.in, got)
+			}
 		})
 	}
 }

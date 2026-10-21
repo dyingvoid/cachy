@@ -13,7 +13,10 @@ func NewProtocolParser() *ProtocolParser {
 }
 
 func (p *ProtocolParser) Parse(in string) (Command, error) {
-	fields := strings.Fields(in)
+	return p.ParseFields(strings.Fields(in))
+}
+
+func (p *ProtocolParser) ParseFields(fields []string) (Command, error) {
 	if len(fields) == 0 {
 		return nil, ErrEmptyCommand
 	}
