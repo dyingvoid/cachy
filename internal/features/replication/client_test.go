@@ -3,10 +3,13 @@ package features_replication
 import (
 	"context"
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 
+	"github.com/dyingvoid/cachy/internal/features"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
 type fakeTransport struct {
@@ -41,6 +44,7 @@ func (f *fakeSerializer) SerializeCommand(cmd features_commands.Command) []byte 
 
 type fakeDeserializer struct {
 	replies     []string
+	commands    []features_commands.Command
 	snapshotErr error
 	readErr     error
 }
@@ -58,8 +62,36 @@ func (f *fakeDeserializer) ReadSimpleString() (string, error) {
 	return reply, nil
 }
 
+func (f *fakeDeserializer) ReadCommand() (features_commands.Command, error) {
+	if len(f.commands) == 0 {
+		return nil, io.EOF
+	}
+
+	cmd := f.commands[0]
+	f.commands = f.commands[1:]
+	return cmd, nil
+}
+
 func (f *fakeDeserializer) DiscardBulkString() error {
 	return f.snapshotErr
+}
+
+type fakeHandler struct {
+	commands []features_commands.Command
+	err      error
+}
+
+func (f *fakeHandler) Handle(
+	_ context.Context,
+	_ *features_conn.State,
+	cmd features_commands.Command,
+) ([]features.Result, error) {
+	f.commands = append(f.commands, cmd)
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return nil, nil
 }
 
 func TestReplicationClientHandshake(t *testing.T) {
@@ -153,5 +185,58 @@ func TestReplicationClientHandshakeCanceledContext(t *testing.T) {
 
 	if err := client.Handshake(ctx); err == nil {
 		t.Fatal("Handshake returned nil error")
+	}
+}
+
+func TestReplicationClientListen(t *testing.T) {
+	commands := []features_commands.Command{
+		features_commands.SetCmd{Key: "key", Value: "value"},
+		features_commands.RPushCmd{Key: "list", Values: []string{"a", "b"}},
+	}
+	handler := &fakeHandler{}
+	client := NewReplicationClient(
+		&fakeTransport{port: 8082},
+		&fakeSerializer{},
+		&fakeDeserializer{commands: commands},
+	)
+
+	if err := client.Listen(context.Background(), handler); !errors.Is(err, io.EOF) {
+		t.Fatalf("Listen error = %v, want %v", err, io.EOF)
+	}
+	if !reflect.DeepEqual(handler.commands, commands) {
+		t.Fatalf("Listen applied %#v, want %#v", handler.commands, commands)
+	}
+}
+
+func TestReplicationClientListenHandlerError(t *testing.T) {
+	handlerErr := errors.New("apply failed")
+	client := NewReplicationClient(
+		&fakeTransport{port: 8082},
+		&fakeSerializer{},
+		&fakeDeserializer{
+			commands: []features_commands.Command{
+				features_commands.SetCmd{Key: "key", Value: "value"},
+			},
+		},
+	)
+
+	err := client.Listen(context.Background(), &fakeHandler{err: handlerErr})
+	if !errors.Is(err, handlerErr) {
+		t.Fatalf("Listen error = %v, want %v", err, handlerErr)
+	}
+}
+
+func TestReplicationClientListenCanceledContext(t *testing.T) {
+	client := NewReplicationClient(
+		&fakeTransport{port: 8082},
+		&fakeSerializer{},
+		&fakeDeserializer{},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := client.Listen(ctx, &fakeHandler{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Listen error = %v, want %v", err, context.Canceled)
 	}
 }

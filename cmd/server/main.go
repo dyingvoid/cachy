@@ -53,11 +53,17 @@ func main() {
 	h := features.NewProtocolHandler(storage, replicationHandler)
 
 	if appCfg.Role == "slave" {
-		replicaClient, err := handshakeReplication(ctx)
+		replicaTransport, replicaClient, err := handshakeReplication(ctx)
 		if err != nil {
 			panic(err)
 		}
-		defer replicaClient.Close()
+		defer replicaTransport.Close()
+
+		go func() {
+			if err := replicaClient.Listen(ctx, h); err != nil && ctx.Err() == nil {
+				log.Error("replication listen", slog.Any("error", err))
+			}
+		}()
 
 		log.Info(
 			"replication handshake completed",
@@ -77,15 +83,15 @@ func main() {
 
 func handshakeReplication(
 	ctx context.Context,
-) (*transport_tcp_client.Client, error) {
+) (*transport_tcp_client.Client, *features_replication.ReplicationClient, error) {
 	cfg, err := transport_tcp_client.NewConfig()
 	if err != nil {
-		return nil, fmt.Errorf("replica client config: %w", err)
+		return nil, nil, fmt.Errorf("replica client config: %w", err)
 	}
 
 	client, err := transport_tcp_client.NewClient(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("connect replica: %w", err)
+		return nil, nil, fmt.Errorf("connect replica: %w", err)
 	}
 
 	replicationClient := features_replication.NewReplicationClient(
@@ -95,8 +101,8 @@ func handshakeReplication(
 	)
 	if err := replicationClient.Handshake(ctx); err != nil {
 		client.Close()
-		return nil, fmt.Errorf("handshake replica: %w", err)
+		return nil, nil, fmt.Errorf("handshake replica: %w", err)
 	}
 
-	return client, nil
+	return client, replicationClient, nil
 }

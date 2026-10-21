@@ -6,7 +6,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dyingvoid/cachy/internal/features"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
 type ClientTransport interface {
@@ -20,7 +22,16 @@ type Serializer interface {
 
 type Deserializer interface {
 	ReadSimpleString() (string, error)
+	ReadCommand() (features_commands.Command, error)
 	DiscardBulkString() error
+}
+
+type Handler interface {
+	Handle(
+		ctx context.Context,
+		state *features_conn.State,
+		cmd features_commands.Command,
+	) ([]features.Result, error)
 }
 
 type ReplicationClient struct {
@@ -75,6 +86,24 @@ func (c *ReplicationClient) Handshake(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *ReplicationClient) Listen(ctx context.Context, handler Handler) error {
+	state := features_conn.NewState()
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		cmd, err := c.deserializer.ReadCommand()
+		if err != nil {
+			return fmt.Errorf("read command: %w", err)
+		}
+
+		if _, err := handler.Handle(ctx, state, cmd); err != nil {
+			return fmt.Errorf("apply command: %w", err)
+		}
+	}
 }
 
 func (c *ReplicationClient) confirm(
