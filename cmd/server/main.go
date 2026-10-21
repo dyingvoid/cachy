@@ -53,9 +53,7 @@ func main() {
 	h := features.NewProtocolHandler(storage, replicationHandler)
 
 	if appCfg.Role == "slave" {
-		replicaClient, err := handshakeReplication(
-			ctx, *appCfg.ReplicaOf, serverConfig.Port,
-		)
+		replicaClient, err := handshakeReplication(ctx)
 		if err != nil {
 			panic(err)
 		}
@@ -79,10 +77,8 @@ func main() {
 
 func handshakeReplication(
 	ctx context.Context,
-	address string,
-	port int,
 ) (*transport_tcp_client.Client, error) {
-	cfg, err := transport_tcp_client.NewConfig(address, port)
+	cfg, err := transport_tcp_client.NewConfig()
 	if err != nil {
 		return nil, fmt.Errorf("replica client config: %w", err)
 	}

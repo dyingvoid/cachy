@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -15,21 +14,14 @@ import (
 )
 
 func main() {
-	host := flag.String("h", "localhost", "server host")
-	port := flag.Int("p", 8081, "server port")
-	flag.Parse()
-
-	if err := run(*host, *port); err != nil {
+	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(host string, port int) error {
-	cfg, err := transport_tcp_client.NewConfig(host, port)
-	if err != nil {
-		return err
-	}
+func run() error {
+	cfg := transport_tcp_client.NewConfigMust()
 
 	client, err := transport_tcp_client.NewClient(context.Background(), cfg)
 	if err != nil {
@@ -37,7 +29,7 @@ func run(host string, port int) error {
 	}
 	defer client.Close()
 
-	fmt.Printf("connected to %s:%d\n", host, port)
+	fmt.Printf("connected to %s:%d\n", cfg.Host, cfg.Port)
 	fmt.Println("commands: PING | INFO | GET key | SET key value [EX|PX ttl] | LPUSH key value... | RPUSH key value... | LPOP key count | LRANGE key start stop | LLEN key | REPLCONF listening-port|capa value | PSYNC id offset")
 	fmt.Println("empty line to quit")
 

@@ -9,20 +9,17 @@ import (
 )
 
 type Config struct {
-	Host         string        `ignored:"true"`
-	Port         int           `ignored:"true"`
+	Host         string        `envconfig:"HOST" default:"localhost"`
+	Port         int           `envconfig:"PORT" default:"8081"`
 	DialTimeout  time.Duration `envconfig:"DIAL_TIMEOUT" default:"100s"`
 	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT" default:"100s"`
 	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT" default:"100s"`
 }
 
-func NewConfig(host string, port int) (Config, error) {
-	cfg := Config{
-		Host: host,
-		Port: port,
-	}
+func NewConfig() (Config, error) {
+	var cfg Config
 
-	if err := envconfig.Process("REPLICA", &cfg); err != nil {
+	if err := envconfig.Process("CLIENT", &cfg); err != nil {
 		return Config{}, fmt.Errorf("replica: process config: %w", err)
 	}
 	if err := cfg.validate(); err != nil {
@@ -32,8 +29,8 @@ func NewConfig(host string, port int) (Config, error) {
 	return cfg, nil
 }
 
-func NewConfigMust(address string, port int) Config {
-	cfg, err := NewConfig(address, port)
+func NewConfigMust() Config {
+	cfg, err := NewConfig()
 	if err != nil {
 		panic(err)
 	}
