@@ -136,13 +136,8 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
 		cmd, err := deserializer.ReadCommand()
 		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return
-			}
-			if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
-				return
-			}
-			continue
+			_ = s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error()))
+			return
 		}
 
 		results, err := s.handler.Handle(ctx, state, cmd)
