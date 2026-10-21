@@ -58,9 +58,15 @@ func (s *Serializer) Serialize(res features.Result) ([]byte, error) {
 	}
 }
 
-func (s *Serializer) SerializeCommand(cmd features_commands.WriteCommand) []byte {
+func (s *Serializer) SerializeCommand(cmd features_commands.Command) []byte {
 	var fields []string
 	switch cmd := cmd.(type) {
+	case features_commands.PingCmd:
+		fields = []string{"PING"}
+	case features_commands.InfoCmd:
+		fields = []string{"INFO"}
+	case features_commands.GetCmd:
+		fields = []string{"GET", cmd.Key}
 	case features_commands.SetCmd:
 		fields = []string{"SET", cmd.Key, cmd.Value}
 		if cmd.Expiry != nil {
@@ -76,6 +82,20 @@ func (s *Serializer) SerializeCommand(cmd features_commands.WriteCommand) []byte
 		fields = append(fields, cmd.Values...)
 	case features_commands.LPopCmd:
 		fields = []string{"LPOP", cmd.Key, strconv.Itoa(cmd.Count)}
+	case features_commands.LRangeCmd:
+		fields = []string{"LRANGE", cmd.Key, strconv.Itoa(cmd.Start), strconv.Itoa(cmd.Stop)}
+	case features_commands.LLenCmd:
+		fields = []string{"LLEN", cmd.Key}
+	case features_commands.PsyncCmd:
+		fields = []string{"PSYNC", cmd.ReplicationID, strconv.FormatInt(cmd.Offset, 10)}
+	case features_commands.ReplConfCmd:
+		fields = []string{"REPLCONF"}
+		if cmd.ListeningPort != nil {
+			fields = append(fields, "listening-port", strconv.Itoa(*cmd.ListeningPort))
+		}
+		if cmd.Capa != nil {
+			fields = append(fields, "capa", *cmd.Capa)
+		}
 	default:
 		panic(fmt.Sprintf("resp serializer: unsupported command type %T, value: %#v", cmd, cmd))
 	}

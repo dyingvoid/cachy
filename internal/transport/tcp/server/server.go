@@ -38,7 +38,7 @@ type Handler interface {
 
 type Serializer interface {
 	Serialize(features.Result) ([]byte, error)
-	SerializeCommand(features_commands.WriteCommand) []byte
+	SerializeCommand(features_commands.Command) []byte
 	BulkError(string) []byte
 }
 
