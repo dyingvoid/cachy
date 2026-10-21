@@ -4,19 +4,20 @@ import (
 	"context"
 
 	"github.com/dyingvoid/cachy/internal/domain"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 type Parser interface {
-	Parse(in string) (Command, error)
+	Parse(in string) (features_commands.Command, error)
 }
 
 type Executor interface {
-	Execute(context.Context, Command) ([]Result, error)
+	Execute(context.Context, features_commands.Command) ([]Result, error)
 }
 
 type Serializer interface {
 	Serialize(Result) string
-	SerializeCommand(WriteCommand) string
+	SerializeCommand(features_commands.WriteCommand) string
 	SerializeError(error) string
 }
 

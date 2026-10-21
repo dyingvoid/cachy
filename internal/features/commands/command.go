@@ -1,4 +1,4 @@
-package features
+package commands
 
 type Command interface {
 	isCommand()

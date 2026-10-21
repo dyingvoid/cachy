@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
@@ -41,37 +42,37 @@ func (h *ProtocolHandler) Handle(
 func (h *ProtocolHandler) execute(
 	ctx context.Context,
 	state *features_conn.State,
-	cmd Command,
+	cmd features_commands.Command,
 ) ([]Result, error) {
 	switch cmd := cmd.(type) {
-	case PingCmd:
+	case features_commands.PingCmd:
 		return singleResult(h.executePing(cmd))
-	case SetCmd:
+	case features_commands.SetCmd:
 		return singleResult(h.executeSet(cmd))
-	case GetCmd:
+	case features_commands.GetCmd:
 		return singleResult(h.executeGet(cmd))
-	case RPushCmd:
+	case features_commands.RPushCmd:
 		return singleResult(h.executeRPush(cmd))
-	case LPushCmd:
+	case features_commands.LPushCmd:
 		return singleResult(h.executeLPush(cmd))
-	case LRangeCmd:
+	case features_commands.LRangeCmd:
 		return singleResult(h.executeLRange(cmd))
-	case LLenCmd:
+	case features_commands.LLenCmd:
 		return singleResult(h.executeLLen(cmd))
-	case LPopCmd:
+	case features_commands.LPopCmd:
 		return singleResult(h.executeLPop(cmd))
-	case InfoCmd:
+	case features_commands.InfoCmd:
 		return singleResult(h.executeInfo(cmd))
-	case ReplConfCmd:
+	case features_commands.ReplConfCmd:
 		return singleResult(h.executeRepl(state, cmd))
-	case PsyncCmd:
+	case features_commands.PsyncCmd:
 		return h.executePsync(state, cmd)
 	default:
-		return nil, fmt.Errorf("can't execute command: %w", ErrUnknownCommand)
+		return nil, fmt.Errorf("can't execute command: %w", features_commands.ErrUnknownCommand)
 	}
 }
 
-func (h *ProtocolHandler) replicate(cmd WriteCommand) {
+func (h *ProtocolHandler) replicate(cmd features_commands.WriteCommand) {
 	if h.replication == nil {
 		return
 	}

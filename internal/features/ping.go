@@ -1,17 +1,7 @@
 package features
 
-type PingCmd struct {
-	commandMarker
-}
+import features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 
-func parsePingArgs(args []string) (PingCmd, error) {
-	if len(args) != 0 {
-		return PingCmd{}, ErrInvalidArguments
-	}
-
-	return PingCmd{}, nil
-}
-
-func (h *ProtocolHandler) executePing(cmd PingCmd) (StringResult, error) {
+func (h *ProtocolHandler) executePing(cmd features_commands.PingCmd) (StringResult, error) {
 	return StringResult("PONG"), nil
 }

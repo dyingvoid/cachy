@@ -1,6 +1,10 @@
 package features
 
-import "sync"
+import (
+	"sync"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+)
 
 type ReplicationHandler struct {
 	mu       sync.RWMutex
@@ -10,7 +14,7 @@ type ReplicationHandler struct {
 
 type ReplicationStream struct {
 	handler   *ReplicationHandler
-	commands  chan WriteCommand
+	commands  chan features_commands.WriteCommand
 	done      chan struct{}
 	mu        sync.Mutex
 	closed    bool
@@ -27,7 +31,7 @@ func NewReplicationHandler(capacity int) *ReplicationHandler {
 func (h *ReplicationHandler) Subscribe() *ReplicationStream {
 	stream := &ReplicationStream{
 		handler:  h,
-		commands: make(chan WriteCommand, h.capacity),
+		commands: make(chan features_commands.WriteCommand, h.capacity),
 		done:     make(chan struct{}),
 	}
 
@@ -38,7 +42,7 @@ func (h *ReplicationHandler) Subscribe() *ReplicationStream {
 	return stream
 }
 
-func (h *ReplicationHandler) Publish(cmd WriteCommand) {
+func (h *ReplicationHandler) Publish(cmd features_commands.WriteCommand) {
 	h.mu.RLock()
 	streams := make([]*ReplicationStream, 0, len(h.streams))
 	for stream := range h.streams {
@@ -65,7 +69,7 @@ func (h *ReplicationHandler) unsubscribe(stream *ReplicationStream) {
 	}
 }
 
-func (s *ReplicationStream) Commands() <-chan WriteCommand {
+func (s *ReplicationStream) Commands() <-chan features_commands.WriteCommand {
 	return s.commands
 }
 
@@ -73,7 +77,7 @@ func (s *ReplicationStream) Close() {
 	s.handler.unsubscribe(s)
 }
 
-func (s *ReplicationStream) send(cmd WriteCommand) {
+func (s *ReplicationStream) send(cmd features_commands.WriteCommand) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

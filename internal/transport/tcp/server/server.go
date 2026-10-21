@@ -13,6 +13,7 @@ import (
 
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
 	"github.com/dyingvoid/cachy/internal/features"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 )
 
@@ -37,7 +38,7 @@ type Handler interface {
 
 type Serializer interface {
 	Serialize(features.Result) ([]byte, error)
-	SerializeCommand(features.WriteCommand) []byte
+	SerializeCommand(features_commands.WriteCommand) []byte
 	BulkError(string) []byte
 }
 

@@ -6,45 +6,10 @@ import (
 	"testing"
 
 	core_state "github.com/dyingvoid/cachy/internal/core/state"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 )
-
-func TestParser_Parse_Psync(t *testing.T) {
-	p := NewProtocolParser()
-
-	cmd, err := p.Parse("psync ? -1")
-	if err != nil {
-		t.Fatalf("Parse(%q) returned unexpected error: %v", "psync ? -1", err)
-	}
-
-	want := PsyncCmd{ReplicationID: "?", Offset: -1}
-	if !reflect.DeepEqual(cmd, want) {
-		t.Fatalf("Parse(%q) = %+v, want %+v", "psync ? -1", cmd, want)
-	}
-}
-
-func TestParser_Parse_PsyncErrors(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-	}{
-		{name: "no arguments", in: "PSYNC"},
-		{name: "missing offset", in: "PSYNC ?"},
-		{name: "too many arguments", in: "PSYNC ? -1 extra"},
-		{name: "non numeric offset", in: "PSYNC ? abc"},
-	}
-
-	p := NewProtocolParser()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := p.Parse(tt.in)
-			if !errors.Is(err, ErrInvalidArguments) {
-				t.Fatalf("Parse(%q) error = %v, want %v", tt.in, err, ErrInvalidArguments)
-			}
-		})
-	}
-}
 
 func TestExecutePsync(t *testing.T) {
 	h := &ProtocolHandler{replication: NewReplicationHandler(100)}
@@ -57,7 +22,7 @@ func TestExecutePsync(t *testing.T) {
 		},
 	}
 
-	res, err := h.executePsync(state, PsyncCmd{ReplicationID: "?", Offset: -1})
+	res, err := h.executePsync(state, features_commands.PsyncCmd{ReplicationID: "?", Offset: -1})
 	if err != nil {
 		t.Fatalf("executePsync returned unexpected error: %v", err)
 	}
@@ -86,7 +51,7 @@ func TestExecutePsync(t *testing.T) {
 		t.Fatalf("state mode = %v, want %v", state.Mode, features_conn.ModeReplicationStreaming)
 	}
 
-	if _, err := h.executePsync(state, PsyncCmd{ReplicationID: "?", Offset: -1}); !errors.Is(err, ErrReplicationStateIncomplete) {
+	if _, err := h.executePsync(state, features_commands.PsyncCmd{ReplicationID: "?", Offset: -1}); !errors.Is(err, ErrReplicationStateIncomplete) {
 		t.Fatalf("second executePsync error = %v, want %v", err, ErrReplicationStateIncomplete)
 	}
 }

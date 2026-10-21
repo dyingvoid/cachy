@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dyingvoid/cachy/internal/features"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 func TestTextSerializerSerialize(t *testing.T) {
@@ -46,37 +47,37 @@ func TestTextSerializerSerializeCommand(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		command features.WriteCommand
+		command features_commands.WriteCommand
 		want    string
 	}{
 		{
 			name:    "set",
-			command: features.SetCmd{Key: "key", Value: "value"},
+			command: features_commands.SetCmd{Key: "key", Value: "value"},
 			want:    "SET key value",
 		},
 		{
 			name:    "set with seconds",
-			command: features.SetCmd{Key: "key", Value: "value", Expiry: &seconds},
+			command: features_commands.SetCmd{Key: "key", Value: "value", Expiry: &seconds},
 			want:    "SET key value EX 10",
 		},
 		{
 			name:    "set with milliseconds",
-			command: features.SetCmd{Key: "key", Value: "value", Expiry: &milliseconds},
+			command: features_commands.SetCmd{Key: "key", Value: "value", Expiry: &milliseconds},
 			want:    "SET key value PX 1500",
 		},
 		{
 			name:    "rpush",
-			command: features.RPushCmd{Key: "key", Values: []string{"a", "b"}},
+			command: features_commands.RPushCmd{Key: "key", Values: []string{"a", "b"}},
 			want:    "RPUSH key a b",
 		},
 		{
 			name:    "lpush",
-			command: features.LPushCmd{Key: "key", Values: []string{"a", "b"}},
+			command: features_commands.LPushCmd{Key: "key", Values: []string{"a", "b"}},
 			want:    "LPUSH key a b",
 		},
 		{
 			name:    "lpop",
-			command: features.LPopCmd{Key: "key", Count: 2},
+			command: features_commands.LPopCmd{Key: "key", Count: 2},
 			want:    "LPOP key 2",
 		},
 	}

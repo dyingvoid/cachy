@@ -1,20 +1,8 @@
 package features
 
-type LPushCmd struct {
-	Key    string
-	Values []string
-	commandMarker
-}
+import features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 
-func parseLPushArgs(args []string) (LPushCmd, error) {
-	if len(args) < 2 {
-		return LPushCmd{}, ErrInvalidArguments
-	}
-
-	return LPushCmd{Key: args[0], Values: args[1:]}, nil
-}
-
-func (h *ProtocolHandler) executeLPush(cmd LPushCmd) (Result, error) {
+func (h *ProtocolHandler) executeLPush(cmd features_commands.LPushCmd) (Result, error) {
 	n, err := h.storage.LPush(cmd.Key, cmd.Values...)
 	if err != nil {
 		return nil, err

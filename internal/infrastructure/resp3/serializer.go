@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dyingvoid/cachy/internal/features"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 var (
@@ -57,23 +58,23 @@ func (s *Serializer) Serialize(res features.Result) ([]byte, error) {
 	}
 }
 
-func (s *Serializer) SerializeCommand(cmd features.WriteCommand) []byte {
+func (s *Serializer) SerializeCommand(cmd features_commands.WriteCommand) []byte {
 	var fields []string
 	switch cmd := cmd.(type) {
-	case features.SetCmd:
+	case features_commands.SetCmd:
 		fields = []string{"SET", cmd.Key, cmd.Value}
 		if cmd.Expiry != nil {
 			fields = append(fields, expiryFields(*cmd.Expiry)...)
 		}
-	case features.LPushCmd:
+	case features_commands.LPushCmd:
 		fields = make([]string, 0, len(cmd.Values)+2)
 		fields = append(fields, "LPUSH", cmd.Key)
 		fields = append(fields, cmd.Values...)
-	case features.RPushCmd:
+	case features_commands.RPushCmd:
 		fields = make([]string, 0, len(cmd.Values)+2)
 		fields = append(fields, "RPUSH", cmd.Key)
 		fields = append(fields, cmd.Values...)
-	case features.LPopCmd:
+	case features_commands.LPopCmd:
 		fields = []string{"LPOP", cmd.Key, strconv.Itoa(cmd.Count)}
 	default:
 		panic(fmt.Sprintf("resp serializer: unsupported command type %T, value: %#v", cmd, cmd))

@@ -6,19 +6,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dyingvoid/cachy/internal/features"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
-func (s *TextSerializer) SerializeCommand(cmd features.WriteCommand) string {
+func (s *TextSerializer) SerializeCommand(cmd features_commands.WriteCommand) string {
 	switch cmd := cmd.(type) {
-	case features.SetCmd:
+	case features_commands.SetCmd:
 		// TODO: serialize function
 		return serializeSet(cmd)
-	case features.LPushCmd:
+	case features_commands.LPushCmd:
 		return serializePush("LPUSH", cmd.Key, cmd.Values)
-	case features.RPushCmd:
+	case features_commands.RPushCmd:
 		return serializePush("RPUSH", cmd.Key, cmd.Values)
-	case features.LPopCmd:
+	case features_commands.LPopCmd:
 		// TODO: use serialize function
 		return fmt.Sprintf("LPOP %s %d", cmd.Key, cmd.Count)
 	default:
@@ -26,7 +26,7 @@ func (s *TextSerializer) SerializeCommand(cmd features.WriteCommand) string {
 	}
 }
 
-func serializeSet(cmd features.SetCmd) string {
+func serializeSet(cmd features_commands.SetCmd) string {
 	fields := []string{"SET", cmd.Key, cmd.Value}
 	if cmd.Expiry != nil {
 		fields = append(fields, expiryFields(*cmd.Expiry)...)

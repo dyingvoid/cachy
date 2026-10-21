@@ -1,19 +1,8 @@
 package features
 
-type LLenCmd struct {
-	Key string
-	commandMarker
-}
+import features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 
-func parseLLenArgs(args []string) (LLenCmd, error) {
-	if len(args) != 1 {
-		return LLenCmd{}, ErrInvalidArguments
-	}
-
-	return LLenCmd{Key: args[0]}, nil
-}
-
-func (h *ProtocolHandler) executeLLen(cmd LLenCmd) (Result, error) {
+func (h *ProtocolHandler) executeLLen(cmd features_commands.LLenCmd) (Result, error) {
 	n, err := h.storage.LLen(cmd.Key)
 	if err != nil {
 		return nil, err

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dyingvoid/cachy/internal/config"
 	"github.com/dyingvoid/cachy/internal/features"
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
 	infrastructure_resp3 "github.com/dyingvoid/cachy/internal/infrastructure/resp3"
 	infrastructure_storage "github.com/dyingvoid/cachy/internal/infrastructure/storage"
@@ -43,7 +44,7 @@ func main() {
 	)
 
 	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
-	parser := features.NewProtocolParser()
+	parser := features_commands.NewProtocolParser()
 	serializer := &infrastructure_resp3.Serializer{}
 	replicationHandler := features.NewReplicationHandler(featuresCfg.ReplicationBuffer)
 

@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 func TestReplicationHandlerPublish(t *testing.T) {
@@ -13,7 +15,7 @@ func TestReplicationHandlerPublish(t *testing.T) {
 	defer first.Close()
 	defer second.Close()
 
-	cmd := SetCmd{Key: "key", Value: "value"}
+	cmd := features_commands.SetCmd{Key: "key", Value: "value"}
 	h.Publish(cmd)
 
 	for i, stream := range []*ReplicationStream{first, second} {
@@ -38,18 +40,18 @@ func TestReplicationStreamClose(t *testing.T) {
 		t.Fatal("commands channel is open after Close")
 	}
 
-	h.Publish(SetCmd{Key: "key", Value: "value"})
+	h.Publish(features_commands.SetCmd{Key: "key", Value: "value"})
 	stream.Close()
 }
 
 func TestReplicationStreamCloseUnblocksPublish(t *testing.T) {
 	h := NewReplicationHandler(1)
 	stream := h.Subscribe()
-	h.Publish(SetCmd{Key: "first", Value: "value"})
+	h.Publish(features_commands.SetCmd{Key: "first", Value: "value"})
 
 	published := make(chan struct{})
 	go func() {
-		h.Publish(SetCmd{Key: "second", Value: "value"})
+		h.Publish(features_commands.SetCmd{Key: "second", Value: "value"})
 		close(published)
 	}()
 

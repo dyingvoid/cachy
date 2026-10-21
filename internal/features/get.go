@@ -1,21 +1,12 @@
 package features
 
-import "fmt"
+import (
+	"fmt"
 
-type GetCmd struct {
-	Key string
-	commandMarker
-}
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+)
 
-func parseGetArgs(args []string) (GetCmd, error) {
-	if len(args) != 1 {
-		return GetCmd{}, ErrInvalidArguments
-	}
-
-	return GetCmd{Key: args[0]}, nil
-}
-
-func (h *ProtocolHandler) executeGet(cmd GetCmd) (Result, error) {
+func (h *ProtocolHandler) executeGet(cmd features_commands.GetCmd) (Result, error) {
 	record, err := h.storage.Get(cmd.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch: %w", err)
