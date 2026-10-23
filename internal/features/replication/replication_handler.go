@@ -7,22 +7,22 @@ import (
 )
 
 type ReplicationHandler struct {
-	mu       sync.RWMutex
-	streams  map[*ReplicationStream]struct{}
-	capacity int
+	mu      sync.RWMutex
+	streams map[*ReplicationStream]struct{}
+	cfg     Config
 }
 
-func NewReplicationHandler(capacity int) *ReplicationHandler {
+func NewReplicationHandler(cfg Config) *ReplicationHandler {
 	return &ReplicationHandler{
-		streams:  make(map[*ReplicationStream]struct{}),
-		capacity: capacity,
+		streams: make(map[*ReplicationStream]struct{}),
+		cfg:     cfg,
 	}
 }
 
 func (h *ReplicationHandler) Subscribe() *ReplicationStream {
 	stream := &ReplicationStream{
 		handler:  h,
-		commands: make(chan features_commands.WriteCommand, h.capacity),
+		commands: make(chan features_commands.WriteCommand, h.cfg.ReplicationBuffer),
 		done:     make(chan struct{}),
 	}
 

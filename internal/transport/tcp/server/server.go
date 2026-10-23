@@ -24,8 +24,10 @@ type Server struct {
 	ln net.Listener
 	wg sync.WaitGroup
 
-	handler Handler
+	mu    sync.Mutex
+	conns map[net.Conn]struct{}
 
+	handler         Handler
 	serializer      Serializer
 	newDeserializer DeserializerFactory
 }
@@ -59,6 +61,7 @@ func NewServer(
 	return &Server{
 		cfg:             cfg,
 		log:             log,
+		conns:           make(map[net.Conn]struct{}),
 		handler:         handler,
 		serializer:      serializer,
 		newDeserializer: newDeserializer,
@@ -67,25 +70,26 @@ func NewServer(
 
 func (s *Server) Start(ctx context.Context) error {
 	addr := fmt.Sprintf(":%d", s.cfg.Port)
-	s.log.Warn("start TCP server", slog.String("addr", addr))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listen on %s:", addr)
 	}
 	s.ln = ln
+	s.log.Info("TCP server started", slog.String("addr", addr))
 
+	return s.acceptLoop(ctx)
+}
+
+func (s *Server) acceptLoop(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		s.log.Warn("server shutting down")
 		if err := s.ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			s.log.Error("server shutdown failed", slog.Any("error", err))
 		}
+		s.log.Warn("TCP server stopped")
 	}()
 
-	return s.loop(ctx)
-}
-
-func (s *Server) loop(ctx context.Context) error {
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
@@ -109,11 +113,12 @@ func (s *Server) loop(ctx context.Context) error {
 	}
 
 	s.wg.Wait()
-	s.log.Warn("TCP server stopped")
 	return ctx.Err()
 }
 
 func (s *Server) handle(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+
 	log := s.log.With(slog.String("addr", conn.RemoteAddr().String()))
 	log.Info("New connection")
 
@@ -124,7 +129,6 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	state := features_conn.NewState()
 	deserializer := s.newDeserializer(conn)
 	for {
-		conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout))
 		cmd, err := deserializer.ReadCommand()
 		if err != nil {
 			_ = s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error()))
@@ -168,13 +172,23 @@ func (s *Server) writeStream(
 	res result.StreamingResult[commands.WriteCommand],
 ) {
 	defer func() {
-		conn.Close()
 		res.Stream.Close()
 	}()
 
-	for cmd := range res.Stream.Chan() {
-		if err := s.write(ctx, conn, mu, s.serializer.SerializeCommand(cmd)); err != nil {
+	ch := res.Stream.Chan()
+
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case cmd, ok := <-ch:
+			if !ok {
+				return
+			}
+
+			if err := s.write(ctx, conn, mu, s.serializer.SerializeCommand(cmd)); err != nil {
+				return
+			}
 		}
 	}
 }

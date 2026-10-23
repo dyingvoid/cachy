@@ -8,9 +8,10 @@ import (
 )
 
 type ServerConfig struct {
-	Port         int           `envconfig:"PORT"`
-	ReadTimeout  time.Duration `envconfig:"READ_TIMEOUT"`
-	WriteTimeout time.Duration `envconfig:"WRITE_TIMEOUT"`
+	Port            int           `envconfig:"PORT"`
+	ReadTimeout     time.Duration `envconfig:"READ_TIMEOUT"`
+	WriteTimeout    time.Duration `envconfig:"WRITE_TIMEOUT"`
+	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT"`
 }
 
 func NewConfig() (ServerConfig, error) {

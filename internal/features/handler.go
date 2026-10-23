@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dyingvoid/cachy/internal/domain"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
 	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
@@ -13,6 +14,19 @@ import (
 type ProtocolHandler struct {
 	storage     Storage
 	replication *features_replication.ReplicationHandler
+}
+
+type Storage interface {
+	Set(key string, value domain.StringRecord) error
+	Get(key string) (domain.StringRecord, error)
+	Delete(key string) error
+	Exists(key string) bool
+
+	RPush(key string, values ...string) (int, error)
+	LPush(key string, values ...string) (int, error)
+	LRange(key string, start, stop int) ([]string, error)
+	LLen(key string) (int, error)
+	LPop(key string, count int) ([]string, error)
 }
 
 func NewProtocolHandler(

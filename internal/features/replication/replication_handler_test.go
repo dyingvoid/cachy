@@ -9,7 +9,7 @@ import (
 )
 
 func TestReplicationHandlerPublish(t *testing.T) {
-	h := NewReplicationHandler(100)
+	h := NewReplicationHandler(Config{ReplicationBuffer: 100})
 	first := h.Subscribe()
 	second := h.Subscribe()
 	defer first.Close()
@@ -31,7 +31,7 @@ func TestReplicationHandlerPublish(t *testing.T) {
 }
 
 func TestReplicationStreamClose(t *testing.T) {
-	h := NewReplicationHandler(100)
+	h := NewReplicationHandler(Config{ReplicationBuffer: 100})
 	stream := h.Subscribe()
 
 	stream.Close()
@@ -45,7 +45,7 @@ func TestReplicationStreamClose(t *testing.T) {
 }
 
 func TestReplicationStreamCloseUnblocksPublish(t *testing.T) {
-	h := NewReplicationHandler(1)
+	h := NewReplicationHandler(Config{ReplicationBuffer: 1})
 	stream := h.Subscribe()
 	h.Publish(features_commands.SetCmd{Key: "first", Value: "value"})
 

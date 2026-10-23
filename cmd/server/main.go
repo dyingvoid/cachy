@@ -33,14 +33,14 @@ func main() {
 	time.Local = appCfg.TimeZone
 	serverConfig := transport_tcp_server.NewConfigMust()
 	storageCfg := infrastructure_storage.NewConfigMust()
-	featuresCfg := features_replication.NewConfigMust()
+	replicationCfg := features_replication.NewConfigMust()
 
 	log.Info(
 		"config",
 		slog.Int("server port", serverConfig.Port),
 		slog.String("time_zone", appCfg.TimeZone.String()),
 		slog.Any("storage", *storageCfg),
-		slog.Any("features", featuresCfg),
+		slog.Any("features", replicationCfg),
 	)
 
 	storage := infrastructure_storage.NewMemoryStorage(log, *storageCfg)
@@ -48,11 +48,12 @@ func main() {
 	newDeserializer := func(r io.Reader) transport_tcp_server.Deserializer {
 		return infrastructure_resp3.NewDeserializer(r)
 	}
-	replicationHandler := features_replication.NewReplicationHandler(featuresCfg.ReplicationBuffer)
+	replicationHandler := features_replication.NewReplicationHandler(replicationCfg)
 
 	h := features.NewProtocolHandler(storage, replicationHandler)
 
 	if appCfg.Role == "slave" {
+		log.Info("starting replication")
 		replicaTransport, replicaClient, err := handshakeReplication(ctx)
 		if err != nil {
 			panic(err)

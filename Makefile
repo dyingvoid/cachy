@@ -9,7 +9,7 @@ run-master:
 
 run-slave:
 	@go fmt ./...
-	@ROLE=slave REPLICA_OF=${CLIENT_HOST}:${CLIENT_PORT} SERVER_PORT=8082 go run ./cmd/server
+	@REPLICATION_ROLE=slave REPLICATION_REPLICA_OF=${CLIENT_HOST}:${CLIENT_PORT} SERVER_PORT=8082 go run ./cmd/server
 
 run-client-master:
 	@go fmt ./...
