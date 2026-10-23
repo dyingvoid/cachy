@@ -2,6 +2,10 @@ package domain
 
 import "time"
 
+type Record interface {
+	Expired() bool
+}
+
 type StringRecord struct {
 	Value    string
 	ExpireAt *time.Time
@@ -32,8 +36,12 @@ type ListRecord struct {
 	List []string
 }
 
-func NewListRecord(values ...string) ListRecord {
-	return ListRecord{List: append([]string{}, values...)}
+func NewListRecord(values ...string) *ListRecord {
+	return &ListRecord{List: append([]string{}, values...)}
+}
+
+func (lr *ListRecord) Expired() bool {
+	return false
 }
 
 func (lr *ListRecord) PushBack(values ...string) {

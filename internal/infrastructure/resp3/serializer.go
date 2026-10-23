@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 var (
@@ -14,6 +19,101 @@ var (
 )
 
 type Serializer struct {
+}
+
+func (s *Serializer) Serialize(res result.Result) ([]byte, error) {
+	switch res := res.(type) {
+	case result.StringResult:
+		return s.SimpleString(string(res))
+	case result.BulkStringResult:
+		return s.BulkString(string(res)), nil
+	case result.IntResult:
+		return s.Integer(int64(res)), nil
+	case result.ListResult:
+		elements := make([][]byte, 0, len(res))
+		for _, element := range res {
+			elements = append(elements, s.BulkString(element))
+		}
+		return s.Array(elements...), nil
+	case result.MapResult:
+		m := res.ToMap()
+		keys := make([]string, 0, len(m))
+		for key := range m {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		pairs := make([]KeyValue, 0, len(keys))
+		for _, key := range keys {
+			pairs = append(pairs, KeyValue{
+				Key:   s.BulkString(key),
+				Value: s.BulkString(m[key]),
+			})
+		}
+		return s.Map(pairs...)
+	case result.FileResult:
+		return s.BulkString(string(res.Content)), nil
+	default:
+		return nil, fmt.Errorf("resp: unsupported result type %T", res)
+	}
+}
+
+func (s *Serializer) SerializeCommand(cmd features_commands.Command) []byte {
+	var fields []string
+	switch cmd := cmd.(type) {
+	case features_commands.PingCmd:
+		fields = []string{"PING"}
+	case features_commands.InfoCmd:
+		fields = []string{"INFO"}
+	case features_commands.GetCmd:
+		fields = []string{"GET", cmd.Key}
+	case features_commands.SetCmd:
+		fields = []string{"SET", cmd.Key, cmd.Value}
+		if cmd.Expiry != nil {
+			fields = append(fields, expiryFields(*cmd.Expiry)...)
+		}
+	case features_commands.LPushCmd:
+		fields = make([]string, 0, len(cmd.Values)+2)
+		fields = append(fields, "LPUSH", cmd.Key)
+		fields = append(fields, cmd.Values...)
+	case features_commands.RPushCmd:
+		fields = make([]string, 0, len(cmd.Values)+2)
+		fields = append(fields, "RPUSH", cmd.Key)
+		fields = append(fields, cmd.Values...)
+	case features_commands.LPopCmd:
+		fields = []string{"LPOP", cmd.Key, strconv.Itoa(cmd.Count)}
+	case features_commands.LRangeCmd:
+		fields = []string{"LRANGE", cmd.Key, strconv.Itoa(cmd.Start), strconv.Itoa(cmd.Stop)}
+	case features_commands.LLenCmd:
+		fields = []string{"LLEN", cmd.Key}
+	case features_commands.PsyncCmd:
+		fields = []string{"PSYNC", cmd.ReplicationID, strconv.FormatInt(cmd.Offset, 10)}
+	case features_commands.ReplConfCmd:
+		fields = []string{"REPLCONF"}
+		if cmd.ListeningPort != nil {
+			fields = append(fields, "listening-port", strconv.Itoa(*cmd.ListeningPort))
+		}
+		if cmd.Capa != nil {
+			fields = append(fields, "capa", *cmd.Capa)
+		}
+	default:
+		panic(fmt.Sprintf("resp serializer: unsupported command type %T, value: %#v", cmd, cmd))
+	}
+
+	elements := make([][]byte, 0, len(fields))
+	for _, field := range fields {
+		elements = append(elements, s.BulkString(field))
+	}
+
+	return s.Array(elements...)
+}
+
+func expiryFields(expiry time.Duration) []string {
+	if expiry%time.Second == 0 {
+		return []string{"EX", strconv.FormatInt(int64(expiry/time.Second), 10)}
+	}
+
+	return []string{"PX", strconv.FormatInt(expiry.Milliseconds(), 10)}
 }
 
 func (s *Serializer) SimpleString(str string) ([]byte, error) {

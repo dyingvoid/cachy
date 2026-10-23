@@ -5,6 +5,9 @@ import (
 	"math"
 	"math/big"
 	"testing"
+	"time"
+
+	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 )
 
 func TestSerializer_SimpleString(t *testing.T) {
@@ -549,5 +552,73 @@ func TestSerializer_StreamedAggregateRejectsAfterClose(t *testing.T) {
 	}
 	if got, err := stream.Close(); err == nil {
 		t.Fatalf("second Close = %q, want error", got)
+	}
+}
+
+func TestSerializer_SerializeCommand(t *testing.T) {
+	s := &Serializer{}
+	expiry := 10 * time.Second
+	port := 6379
+	capa := "psync2"
+
+	tests := []struct {
+		name string
+		cmd  features_commands.Command
+		want []string
+	}{
+		{name: "ping", cmd: features_commands.PingCmd{}, want: []string{"PING"}},
+		{name: "info", cmd: features_commands.InfoCmd{}, want: []string{"INFO"}},
+		{name: "get", cmd: features_commands.GetCmd{Key: "key"}, want: []string{"GET", "key"}},
+		{name: "set", cmd: features_commands.SetCmd{Key: "key", Value: "value"}, want: []string{"SET", "key", "value"}},
+		{
+			name: "set with expiry",
+			cmd:  features_commands.SetCmd{Key: "key", Value: "value", Expiry: &expiry},
+			want: []string{"SET", "key", "value", "EX", "10"},
+		},
+		{
+			name: "lpush",
+			cmd:  features_commands.LPushCmd{Key: "key", Values: []string{"a", "b"}},
+			want: []string{"LPUSH", "key", "a", "b"},
+		},
+		{
+			name: "rpush",
+			cmd:  features_commands.RPushCmd{Key: "key", Values: []string{"a", "b"}},
+			want: []string{"RPUSH", "key", "a", "b"},
+		},
+		{name: "lpop", cmd: features_commands.LPopCmd{Key: "key", Count: 2}, want: []string{"LPOP", "key", "2"}},
+		{
+			name: "lrange",
+			cmd:  features_commands.LRangeCmd{Key: "key", Start: 0, Stop: -1},
+			want: []string{"LRANGE", "key", "0", "-1"},
+		},
+		{name: "llen", cmd: features_commands.LLenCmd{Key: "key"}, want: []string{"LLEN", "key"}},
+		{
+			name: "psync",
+			cmd:  features_commands.PsyncCmd{ReplicationID: "?", Offset: -1},
+			want: []string{"PSYNC", "?", "-1"},
+		},
+		{
+			name: "replconf listening-port",
+			cmd:  features_commands.ReplConfCmd{ListeningPort: &port},
+			want: []string{"REPLCONF", "listening-port", "6379"},
+		},
+		{
+			name: "replconf capa",
+			cmd:  features_commands.ReplConfCmd{Capa: &capa},
+			want: []string{"REPLCONF", "capa", "psync2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			elements := make([][]byte, 0, len(tt.want))
+			for _, field := range tt.want {
+				elements = append(elements, s.BulkString(field))
+			}
+			want := string(s.Array(elements...))
+			if got := string(s.SerializeCommand(tt.cmd)); got != want {
+				t.Fatalf("SerializeCommand() = %q, want %q", got, want)
+			}
+		})
 	}
 }
