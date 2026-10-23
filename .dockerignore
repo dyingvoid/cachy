@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dockerignore
+.env
+.dsh
+.idea
+.vscode
+.out
+out
+*.test
+*.out
+coverage.*
