@@ -33,7 +33,7 @@ func main() {
 	time.Local = appCfg.TimeZone
 	serverConfig := transport_tcp_server.NewConfigMust()
 	storageCfg := infrastructure_storage.NewConfigMust()
-	featuresCfg := features.NewConfigMust()
+	featuresCfg := features_replication.NewConfigMust()
 
 	log.Info(
 		"config",
@@ -48,7 +48,7 @@ func main() {
 	newDeserializer := func(r io.Reader) transport_tcp_server.Deserializer {
 		return infrastructure_resp3.NewDeserializer(r)
 	}
-	replicationHandler := features.NewReplicationHandler(featuresCfg.ReplicationBuffer)
+	replicationHandler := features_replication.NewReplicationHandler(featuresCfg.ReplicationBuffer)
 
 	h := features.NewProtocolHandler(storage, replicationHandler)
 

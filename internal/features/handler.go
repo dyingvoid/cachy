@@ -6,16 +6,18 @@ import (
 
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+	features_replication "github.com/dyingvoid/cachy/internal/features/replication"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 type ProtocolHandler struct {
 	storage     Storage
-	replication *ReplicationHandler
+	replication *features_replication.ReplicationHandler
 }
 
 func NewProtocolHandler(
 	storage Storage,
-	replication *ReplicationHandler,
+	replication *features_replication.ReplicationHandler,
 ) *ProtocolHandler {
 	return &ProtocolHandler{
 		storage:     storage,
@@ -27,7 +29,7 @@ func (h *ProtocolHandler) Handle(
 	ctx context.Context,
 	state *features_conn.State,
 	cmd features_commands.Command,
-) ([]Result, error) {
+) ([]result.Result, error) {
 	switch cmd := cmd.(type) {
 	case features_commands.PingCmd:
 		return singleResult(h.executePing(cmd))
@@ -64,10 +66,10 @@ func (h *ProtocolHandler) replicate(cmd features_commands.WriteCommand) {
 	h.replication.Publish(cmd)
 }
 
-func singleResult(result Result, err error) ([]Result, error) {
+func singleResult(res result.Result, err error) ([]result.Result, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	return []Result{result}, nil
+	return []result.Result{res}, nil
 }

@@ -11,9 +11,10 @@ import (
 	"time"
 
 	core_logger "github.com/dyingvoid/cachy/internal/core/logger"
-	"github.com/dyingvoid/cachy/internal/features"
+	"github.com/dyingvoid/cachy/internal/features/commands"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 type Server struct {
@@ -31,13 +32,13 @@ type Server struct {
 
 type Handler interface {
 	Handle(ctx context.Context, state *features_conn.State, cmd features_commands.Command) (
-		results []features.Result,
+		results []result.Result,
 		err error,
 	)
 }
 
 type Serializer interface {
-	Serialize(features.Result) ([]byte, error)
+	Serialize(result.Result) ([]byte, error)
 	SerializeCommand(features_commands.Command) []byte
 	BulkError(string) []byte
 }
@@ -119,16 +120,6 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	ctx = core_logger.ToContext(ctx, log)
 
 	var writeMu sync.Mutex
-	var stream *features.ReplicationStream
-	var streamDone chan struct{}
-
-	defer func() {
-		conn.Close()
-		if stream != nil {
-			stream.Close()
-			<-streamDone
-		}
-	}()
 
 	state := features_conn.NewState()
 	deserializer := s.newDeserializer(conn)
@@ -148,18 +139,14 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 			continue
 		}
 
-		for _, result := range results {
-			streaming, ok := result.(features.StreamingResult)
+		for _, res := range results {
+			streaming, ok := res.(result.StreamingResult[commands.WriteCommand])
 			if ok {
-				if stream == nil && streaming.Stream != nil {
-					stream = streaming.Stream
-					streamDone = make(chan struct{})
-					go s.writeStream(ctx, conn, &writeMu, stream, streamDone)
-				}
+				s.writeStream(ctx, conn, &writeMu, streaming)
 				continue
 			}
 
-			bytes, err := s.serializer.Serialize(result)
+			bytes, err := s.serializer.Serialize(res)
 			if err != nil {
 				if err := s.write(ctx, conn, &writeMu, s.serializer.BulkError(err.Error())); err != nil {
 					return
@@ -178,14 +165,15 @@ func (s *Server) writeStream(
 	ctx context.Context,
 	conn net.Conn,
 	mu *sync.Mutex,
-	stream *features.ReplicationStream,
-	done chan<- struct{},
+	res result.StreamingResult[commands.WriteCommand],
 ) {
-	defer close(done)
+	defer func() {
+		conn.Close()
+		res.Stream.Close()
+	}()
 
-	for cmd := range stream.Commands() {
+	for cmd := range res.Stream.Chan() {
 		if err := s.write(ctx, conn, mu, s.serializer.SerializeCommand(cmd)); err != nil {
-			conn.Close()
 			return
 		}
 	}

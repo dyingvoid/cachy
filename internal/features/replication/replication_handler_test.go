@@ -1,4 +1,4 @@
-package features
+package features_replication
 
 import (
 	"reflect"
@@ -20,7 +20,7 @@ func TestReplicationHandlerPublish(t *testing.T) {
 
 	for i, stream := range []*ReplicationStream{first, second} {
 		select {
-		case got := <-stream.Commands():
+		case got := <-stream.Chan():
 			if !reflect.DeepEqual(got, cmd) {
 				t.Fatalf("stream %d command = %#v, want %#v", i, got, cmd)
 			}
@@ -36,7 +36,7 @@ func TestReplicationStreamClose(t *testing.T) {
 
 	stream.Close()
 
-	if _, ok := <-stream.Commands(); ok {
+	if _, ok := <-stream.Chan(); ok {
 		t.Fatal("commands channel is open after Close")
 	}
 

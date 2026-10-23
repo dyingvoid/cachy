@@ -5,14 +5,15 @@ import (
 
 	"github.com/dyingvoid/cachy/internal/domain"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 type Executor interface {
-	Execute(context.Context, features_commands.Command) ([]Result, error)
+	Execute(context.Context, features_commands.Command) ([]result.Result, error)
 }
 
 type Serializer interface {
-	Serialize(Result) string
+	Serialize(result.Result) string
 	SerializeCommand(features_commands.WriteCommand) string
 	SerializeError(error) string
 }

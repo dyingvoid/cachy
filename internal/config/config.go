@@ -28,7 +28,7 @@ func Set(cfg *Config) {
 
 func New() (Config, error) {
 	var cfg Config
-	if err := envconfig.Process("", &cfg); err != nil {
+	if err := envconfig.Process("REPLICATION", &cfg); err != nil {
 		return Config{}, fmt.Errorf("process envconfig: %w", err)
 	}
 

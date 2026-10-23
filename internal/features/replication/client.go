@@ -6,9 +6,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dyingvoid/cachy/internal/features"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
 	features_conn "github.com/dyingvoid/cachy/internal/features/conn"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 type ClientTransport interface {
@@ -31,7 +31,7 @@ type Handler interface {
 		ctx context.Context,
 		state *features_conn.State,
 		cmd features_commands.Command,
-	) ([]features.Result, error)
+	) ([]result.Result, error)
 }
 
 type ReplicationClient struct {

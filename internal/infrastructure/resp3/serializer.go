@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dyingvoid/cachy/internal/features"
 	features_commands "github.com/dyingvoid/cachy/internal/features/commands"
+	"github.com/dyingvoid/cachy/internal/features/result"
 )
 
 var (
@@ -21,21 +21,21 @@ var (
 type Serializer struct {
 }
 
-func (s *Serializer) Serialize(res features.Result) ([]byte, error) {
+func (s *Serializer) Serialize(res result.Result) ([]byte, error) {
 	switch res := res.(type) {
-	case features.StringResult:
+	case result.StringResult:
 		return s.SimpleString(string(res))
-	case features.BulkStringResult:
+	case result.BulkStringResult:
 		return s.BulkString(string(res)), nil
-	case features.IntResult:
+	case result.IntResult:
 		return s.Integer(int64(res)), nil
-	case features.ListResult:
+	case result.ListResult:
 		elements := make([][]byte, 0, len(res))
 		for _, element := range res {
 			elements = append(elements, s.BulkString(element))
 		}
 		return s.Array(elements...), nil
-	case features.MapResult:
+	case result.MapResult:
 		m := res.ToMap()
 		keys := make([]string, 0, len(m))
 		for key := range m {
@@ -51,7 +51,7 @@ func (s *Serializer) Serialize(res features.Result) ([]byte, error) {
 			})
 		}
 		return s.Map(pairs...)
-	case features.FileResult:
+	case result.FileResult:
 		return s.BulkString(string(res.Content)), nil
 	default:
 		return nil, fmt.Errorf("resp: unsupported result type %T", res)

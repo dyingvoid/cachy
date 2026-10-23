@@ -1,6 +1,8 @@
-package features
+package result
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type Result interface {
 	isResult()
@@ -20,6 +22,7 @@ type MapResult interface {
 }
 
 type Info struct {
+	Result
 	Role              string
 	ReplicaOf         *string
 	ReplicationID     string
@@ -52,12 +55,19 @@ func (i Info) ToMap() map[string]string {
 }
 
 type FileResult struct {
+	Result
 	Len     int
 	Content []byte
 }
 
-type StreamingResult struct {
-	Stream *ReplicationStream
+type Stream[T any] interface {
+	Chan() <-chan T
+	Close()
+}
+
+type StreamingResult[T any] struct {
+	Result
+	Stream Stream[T]
 }
 
 func (ListResult) isResult() {}
@@ -67,9 +77,3 @@ func (StringResult) isResult() {}
 func (BulkStringResult) isResult() {}
 
 func (IntResult) isResult() {}
-
-func (Info) isResult() {}
-
-func (FileResult) isResult() {}
-
-func (StreamingResult) isResult() {}
