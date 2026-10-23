@@ -90,9 +90,10 @@ func (h *ProtocolHandler) executeLPop(cmd features_commands.LPopCmd) (result.Lis
 
 func (h *ProtocolHandler) executeInfo(cmd features_commands.InfoCmd) (result.MapResult, error) {
 	cfg := config.Get()
+	str := "todo"
 	// TODO: move info elsewhere
 	info := result.NewInfo(
-		cfg.Role, cfg.ReplicaOf,
+		cfg.Role, &str,
 		core_state.ReplicationID(),
 		core_state.ReplicationOffset(),
 	)

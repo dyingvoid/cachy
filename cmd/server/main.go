@@ -63,12 +63,12 @@ func main() {
 		go func() {
 			if err := replicaClient.Listen(ctx, h); err != nil && ctx.Err() == nil {
 				log.Error("replication listen", slog.Any("error", err))
+				panic(err)
 			}
 		}()
 
 		log.Info(
 			"replication handshake completed",
-			slog.String("master", *appCfg.ReplicaOf),
 			slog.Int("listening_port", serverConfig.Port),
 		)
 	}

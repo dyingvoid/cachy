@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -11,9 +10,8 @@ import (
 )
 
 type Config struct {
-	Role      string  `envconfig:"role" required:"true"`
-	ReplicaOf *string `envconfig:"replica_of"`
-	TimeZone  *time.Location
+	Role     string `envconfig:"role" required:"true"`
+	TimeZone *time.Location
 }
 
 var global atomic.Pointer[Config]
@@ -43,21 +41,7 @@ func New() (Config, error) {
 	}
 	cfg.TimeZone = location
 
-	return cfg, cfg.validate()
-}
-
-func (c Config) validate() error {
-	switch c.Role {
-	case "master":
-	case "slave":
-		if c.ReplicaOf == nil || *c.ReplicaOf == "" {
-			return errors.New("replica_of is required for slave role")
-		}
-	default:
-		return errors.New("role must be master or slave")
-	}
-
-	return nil
+	return cfg, nil
 }
 
 func NewMust() Config {
